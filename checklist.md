@@ -70,7 +70,7 @@ vercel.json pnpm-workspace.yaml README.md AGENTS.md
   - **Expected output:** Evidence for target-account access to `gpt-5.6-sol`, tool calls, Pydantic structured output, tracing, sessions, and bounded latency.
   - **Validation:** Execute the spike against the production-intended account; record model ID, SDK version, trace ID, schema result, tool result, latency, and limitations. Stop if any required capability fails.
 
-- [ ] **TASK-004 — Spike fallback-provider compatibility**
+- [x] **TASK-004 — Spike fallback-provider compatibility**
   - **Release:** V1 required, blocking
   - **Dependencies:** TASK-003
   - **Requirements:** AGENT-012–AGENT-013, FR-028–FR-030, FAIL-007–FAIL-008
