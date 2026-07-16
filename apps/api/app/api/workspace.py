@@ -21,6 +21,13 @@ class GuestWorkspace:
             "scenario_id": None,
         }
     )
+    schedule_runs: dict[str, dict[str, Any]] = field(default_factory=dict)
+    drafts: dict[str, Any] = field(default_factory=dict)
+    idempotency: dict[str, dict[str, object]] = field(default_factory=dict)
+    official_versions: list[dict[str, object]] = field(default_factory=list)
+    edits: dict[str, dict[str, object]] = field(default_factory=dict)
+    disruptions: dict[str, dict[str, object]] = field(default_factory=dict)
+    schedule_diffs: dict[str, dict[str, object]] = field(default_factory=dict)
 
 
 class GuestWorkspaceStore:

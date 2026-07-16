@@ -346,7 +346,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Guest, sample, tournament, constraint, location, and weather routes match spec request/response and authorization behavior.
   - **Validation:** API contract tests and generated OpenAPI snapshot pass.
 
-- [ ] **TASK-033 — Implement generation, comparison, edit, and recovery endpoints**
+- [x] **TASK-033 — Implement generation, comparison, edit, and recovery endpoints**
   - **Release:** V1 required
   - **Dependencies:** TASK-019–TASK-021, TASK-032
   - **Requirements:** FR-009–FR-023, RECOVERY-001–RECOVERY-009, FAIL-004–FAIL-005, FAIL-009
@@ -354,7 +354,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Idempotent asynchronous solve/repair operations with synchronous reads and typed failures.
   - **Validation:** API integration tests cover happy, infeasible, stale, retry, and cancellation paths.
 
-- [ ] **TASK-034 — Implement synchronous export, audit, health, and mode endpoints**
+- [x] **TASK-034 — Implement synchronous export, audit, health, and mode endpoints**
   - **Release:** V1 required
   - **Dependencies:** TASK-032
   - **Requirements:** FR-002, FR-024–FR-035, DATA-007, OBS-001–OBS-005, DEPLOY-004
@@ -366,7 +366,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 12 — Database and persistence
 
-- [ ] **TASK-035 — Implement PostgreSQL schema and migrations**
+- [x] **TASK-035 — Implement PostgreSQL schema and migrations**
   - **Release:** V1 required
   - **Dependencies:** TASK-006
   - **Requirements:** DATA-001–DATA-009, NFR-007, NFR-011
@@ -374,7 +374,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Immutable revisions/versions, one active tournament, audit events, jobs, sessions, idempotency, and feedback constraints.
   - **Validation:** Migrate empty database up/down/up; run repository integration tests.
 
-- [ ] **TASK-036 — Implement transactional approval service**
+- [x] **TASK-036 — Implement transactional approval service**
   - **Release:** V1 required
   - **Dependencies:** TASK-015, TASK-035
   - **Requirements:** FR-014–FR-015, APPROVAL-001–APPROVAL-007, AC-011
@@ -382,7 +382,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Ownership, expected revision, ready/valid status, repair baseline, idempotency, and freshness verified in one transaction with audit event.
   - **Validation:** Concurrent approval tests produce one official version; stale/invalid/direct UI mutations fail.
 
-- [ ] **TASK-037 — Implement guest retention, reset, deletion, and isolation**
+- [x] **TASK-037 — Implement guest retention, reset, deletion, and isolation**
   - **Release:** V1 required
   - **Dependencies:** TASK-035
   - **Requirements:** FR-025, FR-031–FR-033, SEC-001, SEC-006–SEC-009, AC-015–AC-017
@@ -394,7 +394,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 13 — Next.js user interface
 
-- [ ] **TASK-038 — Build the accessible workspace shell and samples entry**
+- [x] **TASK-038 — Build the accessible workspace shell and samples entry**
   - **Release:** V1 required
   - **Dependencies:** TASK-032, TASK-035
   - **Requirements:** UX-001–UX-002, UX-008, ACCESS-001–ACCESS-006

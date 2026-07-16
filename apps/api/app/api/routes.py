@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Cookie, Depends, Query, Request, Response, status
-from fastapi.responses import JSONResponse
 from pydantic import Field
 
 from app.api.problems import APIProblem
@@ -133,15 +132,6 @@ def build_v1_router(store: GuestWorkspaceStore) -> APIRouter:
             "scenario_id": None,
         }
         return _workspace_view(workspace)
-
-    @router.get("/workspace/export")
-    def export_workspace(
-        workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
-    ):
-        return JSONResponse(
-            content=_workspace_view(workspace),
-            headers={"Content-Disposition": "attachment; filename=crickops-tournament.json"},
-        )
 
     @router.get("/tournament")
     def read_tournament(
