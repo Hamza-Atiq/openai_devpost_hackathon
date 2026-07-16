@@ -178,7 +178,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 5 — Independent schedule validator
 
-- [ ] **TASK-015 — Implement the independent validator and digests**
+- [x] **TASK-015 — Implement the independent validator and digests**
   - **Release:** V1 required
   - **Dependencies:** TASK-013
   - **Requirements:** FR-011, AGENT-007, AC-003, METRIC-001–METRIC-003
