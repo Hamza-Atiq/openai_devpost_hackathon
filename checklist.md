@@ -326,7 +326,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Weather explains coverage/uncertainty; Fairness separates group and potential-knockout metrics and never edits fixtures.
   - **Validation:** Evals reject safety guarantees, radar claims, placeholder overcounting, and fabricated metrics.
 
-- [ ] **TASK-031 — Implement Recovery specialist and meaningful orchestration**
+- [x] **TASK-031 — Implement Recovery specialist and meaningful orchestration**
   - **Release:** V1 required
   - **Dependencies:** TASK-021, TASK-029, TASK-030
   - **Requirements:** AGENT-006, AGENT-009–AGENT-010, RECOVERY-001–RECOVERY-009, METRIC-008
