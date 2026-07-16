@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
-
 from app.main import create_app
 from app.session_probe import COOKIE_NAME, SessionProbeConfig
-
+from fastapi.testclient import TestClient
 
 ORIGIN = "https://crickops.example"
 SECRET = "task-005-cookie-secret-value-0001"
