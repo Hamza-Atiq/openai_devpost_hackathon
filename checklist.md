@@ -214,7 +214,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Weather risk/coverage, group rest, potential knockout rest, final rest, venue/slot balance, and preference satisfaction are separate and reproducible.
   - **Validation:** Golden-vector tests match exact expected decimal values and rounding.
 
-- [ ] **TASK-019 — Generate and compare three profiles plus Custom**
+- [x] **TASK-019 — Generate and compare three profiles plus Custom**
   - **Release:** V1 required
   - **Dependencies:** TASK-014, TASK-016, TASK-018
   - **Requirements:** FR-009–FR-013, SCHED-011–SCHED-013, AC-002
