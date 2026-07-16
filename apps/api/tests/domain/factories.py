@@ -68,7 +68,7 @@ def valid_tournament_payload() -> dict[str, object]:
         "allocation_minutes": 240,
         "start_date": date(2026, 9, 1),
         "end_date": date(2026, 9, 10),
-        "status": "draft",
+        "status": "draft_setup",
         "time_zone_policy": "shared",
         "teams": teams,
         "groups": groups,

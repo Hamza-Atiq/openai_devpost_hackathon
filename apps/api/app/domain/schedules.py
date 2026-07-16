@@ -16,10 +16,17 @@ class ScheduleProfile(StrEnum):
 
 
 class DraftStatus(StrEnum):
-    PENDING = "pending"
+    QUEUED = "queued"
+    SOLVING = "solving"
+    VALIDATING = "validating"
     READY = "ready"
-    REJECTED = "rejected"
+    INVALID = "invalid"
+    INFEASIBLE = "infeasible"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
     APPROVED = "approved"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"
 
 
 class FixturePlacement(DomainModel):

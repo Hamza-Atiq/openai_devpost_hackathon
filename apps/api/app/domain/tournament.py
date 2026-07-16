@@ -22,10 +22,12 @@ class MatchFormatPreset(StrEnum):
 
 
 class TournamentStatus(StrEnum):
-    DRAFT = "draft"
-    READY = "ready"
-    ACTIVE = "active"
-    ARCHIVED = "archived"
+    DRAFT_SETUP = "draft_setup"
+    AWAITING_CONSTRAINT_CONFIRMATION = "awaiting_constraint_confirmation"
+    READY_TO_SCHEDULE = "ready_to_schedule"
+    OPTIONS_READY = "options_ready"
+    OFFICIAL_SCHEDULE = "official_schedule"
+    RECOVERY_DRAFT = "recovery_draft"
 
 
 class TimeZonePolicy(StrEnum):

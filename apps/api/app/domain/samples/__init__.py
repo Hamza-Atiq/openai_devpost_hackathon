@@ -112,7 +112,7 @@ def _expand_seed(seed: SampleSeed, *, sample_index: int) -> TournamentConfig:
         allocation_minutes=240,
         start_date=seed.start_date,
         end_date=seed.end_date,
-        status="draft",
+        status="draft_setup",
         time_zone_policy="shared",
         teams=teams,
         groups=groups,

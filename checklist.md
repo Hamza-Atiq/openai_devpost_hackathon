@@ -110,7 +110,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Two neutral, non-infringing samples load as T20, contain eight teams/two venues, and are immediately schedulable.
   - **Validation:** Run sample validation and branding scan; expect zero schema, capacity, trademark, or unauthorized-team-brand failures.
 
-- [ ] **TASK-008 — Implement tournament revision and state transitions**
+- [x] **TASK-008 — Implement tournament revision and state transitions**
   - **Release:** V1 required
   - **Dependencies:** TASK-006
   - **Requirements:** DATA-002–DATA-003, APPROVAL-001–APPROVAL-007, NFR-011
