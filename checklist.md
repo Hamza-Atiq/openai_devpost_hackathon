@@ -246,7 +246,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 8 — Weather service and demo mode
 
-- [ ] **TASK-022 — Verify Open-Meteo usage rights and attribution**
+- [x] **TASK-022 — Verify Open-Meteo usage rights and attribution**
   - **Release:** V1 required, blocking live deployment
   - **Dependencies:** TASK-002
   - **Requirements:** WEATHER-013, SEC-006, DEPLOY-007

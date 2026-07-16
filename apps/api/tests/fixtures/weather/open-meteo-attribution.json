@@ -1,0 +1,16 @@
+{
+  "provider": "Open-Meteo",
+  "display_text": "Weather data by Open-Meteo.com",
+  "provider_url": "https://open-meteo.com/",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "transformation_notice": "CrickOps transforms forecast data into planning risk guidance; it is not an official safety or weather decision.",
+  "free_api_notice": "The hosted free API is limited to non-commercial evaluation and prototyping under Open-Meteo's current terms.",
+  "commercial_follow_up": "Re-review current terms and select a paid customer API plan or legally reviewed self-hosting before commercial use.",
+  "reviewed_on": "2026-07-16",
+  "source_urls": [
+    "https://open-meteo.com/en/pricing",
+    "https://open-meteo.com/en/terms",
+    "https://open-meteo.com/en/license"
+  ]
+}
