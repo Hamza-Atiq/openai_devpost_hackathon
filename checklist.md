@@ -46,7 +46,7 @@ vercel.json pnpm-workspace.yaml README.md AGENTS.md
 
 ## Milestone 1 — Repository and development environment
 
-- [ ] **TASK-001 — Scaffold the monorepo and quality commands**
+- [x] **TASK-001 — Scaffold the monorepo and quality commands**
   - **Release:** V1 required
   - **Dependencies:** None
   - **Requirements:** NFR-001, NFR-008, DEPLOY-005

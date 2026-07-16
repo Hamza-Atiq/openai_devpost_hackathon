@@ -1,0 +1,9 @@
+{
+  "name": "crickops",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "lint": "pnpm --filter @crickops/web lint",
+    "test": "pnpm --filter @crickops/web test"
+  }
+}
