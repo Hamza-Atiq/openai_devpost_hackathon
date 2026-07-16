@@ -338,7 +338,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 11 — FastAPI application
 
-- [ ] **TASK-032 — Implement workspace/setup/weather endpoints and error contract**
+- [x] **TASK-032 — Implement workspace/setup/weather endpoints and error contract**
   - **Release:** V1 required
   - **Dependencies:** TASK-008, TASK-023–TASK-027
   - **Requirements:** FR-001–FR-008, FAIL-001–FAIL-003, FAIL-006, DEPLOY-008
