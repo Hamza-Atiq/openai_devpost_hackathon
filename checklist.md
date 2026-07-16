@@ -150,7 +150,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Exactly-one placement, slot eligibility, fixed graph, blackouts, pins, and typed feasible/infeasible results.
   - **Validation:** Run minimal feasible and seeded infeasible tests; expect deterministic validity status.
 
-- [ ] **TASK-012 — Enforce allocation intervals and venue NoOverlap**
+- [x] **TASK-012 — Enforce allocation intervals and venue NoOverlap**
   - **Release:** V1 required
   - **Dependencies:** TASK-011
   - **Requirements:** SCHED-023–SCHED-024, SCHED-029, AC-022–AC-023, AC-026

@@ -8,6 +8,7 @@ from ortools.sat.python import cp_model
 from app.domain.matches import MatchDefinition
 from app.domain.tournament import TournamentConfig
 from app.domain.venues import SlotAvailability
+from app.scheduling.intervals import add_venue_interval_constraints
 from app.scheduling.pairings import generate_match_graph
 from app.scheduling.solver_result import (
     FeasibleSolverResult,
@@ -65,6 +66,14 @@ def solve_hard_feasible_schedule(
 
     for slot in ordered_slots:
         model.add_at_most_one(placement[(match.id, slot.id)] for match in ordered_matches)
+
+    add_venue_interval_constraints(
+        model,
+        placement,
+        ordered_matches,
+        ordered_slots,
+        tournament.allocation_minutes,
+    )
 
     for match_id, slot_id in pins.items():
         model.add(placement[(match_id, slot_id)] == 1)
