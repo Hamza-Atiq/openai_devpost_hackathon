@@ -106,6 +106,41 @@ def test_tournament_update_rejects_unsupported_format_as_problem_details() -> No
     assert response.json()["code"] == "invalid_tournament"
 
 
+def test_constraint_confirmation_persists_ready_state_and_rejects_stale_revision() -> None:
+    client = api_client()
+    created = client.post(
+        "/api/v1/workspaces",
+        json={"sample_id": "global-community-cup"},
+    ).json()
+    revision = created["tournament"]["revision"]
+
+    confirmed = client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": revision,
+            "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+        },
+    )
+    restored = client.get("/api/v1/workspace")
+    stale = client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": revision,
+            "selection": {"match_format_preset": "T10", "allocation_minutes": 120},
+        },
+    )
+
+    assert confirmed.status_code == 200
+    assert confirmed.json()["status"] == "ready_to_schedule"
+    assert restored.json()["constraint_confirmation"]["selection"]["match_format_preset"] == "T20"
+    assert restored.json()["tournament"]["status"] == "ready_to_schedule"
+    assert restored.json()["tournament"]["revision"] == revision + 1
+    assert stale.status_code == 409
+    assert stale.json()["code"] == "stale_tournament_revision"
+
+
 def test_deterministic_weather_activation_survives_live_unavailability() -> None:
     client = api_client()
     client.post(

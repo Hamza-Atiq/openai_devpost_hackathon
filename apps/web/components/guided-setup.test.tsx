@@ -23,6 +23,8 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("Hard rule");
     expect(markup).toContain("Preferred");
     expect(markup).toContain("Confirm hard constraints");
+    expect(markup).toContain("Confirmation pending");
+    expect(markup).toContain('aria-live="polite"');
   });
 
   it("gives a clear stale-revision recovery action", () => {

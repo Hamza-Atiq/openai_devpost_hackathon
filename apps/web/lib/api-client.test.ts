@@ -46,4 +46,39 @@ describe("CrickOpsApiClient", () => {
       new CrickOpsApiClient(fetcher).createWorkspace("missing"),
     ).rejects.toHaveProperty("code", "invalid_sample");
   });
+
+  it("confirms constraints and checks persisted readiness through the API", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "ready_to_schedule", revision: 4 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ready: true, violations: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    const result = await new CrickOpsApiClient(fetcher).confirmSetup({
+      confirmation: true,
+      expected_revision: 3,
+      selection: { match_format_preset: "T20", allocation_minutes: 240 },
+    });
+
+    expect(result.ready).toBe(true);
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/constraints/confirm",
+      expect.objectContaining({ method: "POST", credentials: "same-origin" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/tournament/precheck",
+      expect.objectContaining({ method: "POST", credentials: "same-origin" }),
+    );
+  });
 });

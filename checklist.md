@@ -410,7 +410,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** T10/T20 control, separate venue/location confirmation, shared timezone, slot patterns, hard/soft review, explicit confirmation.
   - **Validation:** Component and E2E tests cover both presets, manual coordinates, mismatch, blackout, and stale edit.
 
-- [ ] **TASK-040 — Build Schedule Rail and official schedule view**
+- [x] **TASK-040 — Build Schedule Rail and official schedule view**
   - **Release:** V1 required
   - **Dependencies:** TASK-038, TASK-036
   - **Requirements:** UX-003, UX-005, UX-009–UX-010, APPROVAL-007
