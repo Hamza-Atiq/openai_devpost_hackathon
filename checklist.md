@@ -54,7 +54,7 @@ vercel.json pnpm-workspace.yaml README.md AGENTS.md
   - **Expected output:** `pnpm lint`, `pnpm test`, `uv run ruff check .`, and `uv run pytest` are defined and initially pass.
   - **Validation:** Run all four commands; expect exit code 0. Commit `chore: scaffold crickops monorepo`.
 
-- [ ] **TASK-002 — Add configuration and secret boundaries**
+- [x] **TASK-002 — Add configuration and secret boundaries**
   - **Release:** V1 required
   - **Dependencies:** TASK-001
   - **Requirements:** SEC-002, DEPLOY-003, DEPLOY-006

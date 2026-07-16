@@ -1,0 +1,19 @@
+title = "CrickOps AI secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "crickops-server-secret-in-public-artifact"
+description = "Server secret name or assignment found in a frontend public/build artifact"
+path = '''apps/web/(?:\.next|out|public)/'''
+regex = '''(?i)(?:DATABASE_URL|OPENAI_API_KEY|CRICKOPS_COOKIE_SECRET|CRICKOPS_ENCRYPTION_SECRET)(?:\s*[=:]|\b)'''
+tags = ["secret", "frontend", "crickops"]
+
+[[allowlists]]
+description = "Documented empty placeholders are safe in the example environment file"
+paths = ['''^\.env\.example$''']
+regexTarget = "line"
+regexes = [
+  '''^(?:DATABASE_URL|OPENAI_API_KEY|CRICKOPS_COOKIE_SECRET|CRICKOPS_ENCRYPTION_SECRET)=$''',
+]
