@@ -166,7 +166,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** One match per team/local day, all groups before semifinals, both semifinals before final, every possible qualifier rest path protected.
   - **Validation:** Run midnight, DST, non-overlapping-same-day, and same-day-semifinal cases; expect specified outcomes.
 
-- [ ] **TASK-014 — Implement pre-solver feasibility evidence**
+- [x] **TASK-014 — Implement pre-solver feasibility evidence**
   - **Release:** V1 required
   - **Dependencies:** TASK-013
   - **Requirements:** FR-022–FR-023, SCHED-014–SCHED-015, FAIL-003
