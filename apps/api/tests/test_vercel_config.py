@@ -7,6 +7,7 @@ from pathlib import Path
 def test_vercel_disables_rewrite_cache_for_api_routes() -> None:
     config = json.loads(Path("apps/web/vercel.json").read_text(encoding="utf-8"))
 
+    assert config["outputDirectory"] == ".next"
     api_headers = next(item for item in config["headers"] if item["source"] == "/api/:path*")
     assert {
         "key": "x-vercel-enable-rewrite-caching",
