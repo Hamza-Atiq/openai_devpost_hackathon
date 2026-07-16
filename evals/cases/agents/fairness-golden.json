@@ -1,0 +1,62 @@
+{
+  "input": {
+    "schedule_id": "balanced-draft",
+    "validation_valid": true,
+    "metric_version": "schedule-metrics/v1",
+    "metrics": {
+      "group_rest_fairness": 82.0,
+      "potential_knockout_rest": 71.0,
+      "venue_balance": 90.0,
+      "slot_balance": 88.0,
+      "preference_satisfaction": 86.0
+    },
+    "team_breakdown": {
+      "Team C": {
+        "group_rest_quality": 61.0,
+        "potential_knockout_minimum_minutes": 960.0
+      }
+    }
+  },
+  "output": {
+    "findings": [
+      "Venue and slot allocation are balanced, while Team C is the group-rest low outlier."
+    ],
+    "outliers": [
+      {
+        "team_id": "Team C",
+        "metric": "group_rest_quality",
+        "value": 61.0,
+        "reason": "Lowest schedule-derived group-stage rest quality."
+      }
+    ],
+    "tradeoffs": [
+      "Improving Team C's rest may reduce organizer-preference satisfaction."
+    ],
+    "group_rest_summary": "Group-stage rest fairness is 82.0 and Team C is the low outlier.",
+    "potential_knockout_rest_summary": "Potential knockout rest is 71.0 and is evaluated by mutually exclusive qualification paths.",
+    "metric_claims": {
+      "group_rest_fairness": 82.0,
+      "potential_knockout_rest": 71.0,
+      "venue_balance": 90.0,
+      "slot_balance": 88.0,
+      "preference_satisfaction": 86.0
+    },
+    "evidence_refs": [
+      {
+        "evidence_id": "fairness:balanced-draft:v1",
+        "evidence_kind": "validated_fairness_metrics",
+        "revision": 4,
+        "consumed_fields": [
+          "group_rest_fairness",
+          "potential_knockout_rest",
+          "venue_balance",
+          "slot_balance",
+          "preference_satisfaction",
+          "team_breakdown"
+        ]
+      }
+    ],
+    "overall_summary": "The schedule is broadly balanced with one material group-rest outlier.",
+    "fairness_boundary": "This is a schedule-derived comparison, not a universal definition of fairness."
+  }
+}

@@ -318,7 +318,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Director owns conversation; Rules proposes/clarifies; Strategy requests profiles and recommends only from validated metrics.
   - **Validation:** Golden and adversarial evals pass; every specialist output contains consumed role-specific evidence.
 
-- [ ] **TASK-030 — Implement Weather and Fairness specialists**
+- [x] **TASK-030 — Implement Weather and Fairness specialists**
   - **Release:** V1 required
   - **Dependencies:** TASK-018, TASK-025, TASK-028
   - **Requirements:** AGENT-004–AGENT-005, FAIR-001–FAIR-005, WEATHER-009–WEATHER-010

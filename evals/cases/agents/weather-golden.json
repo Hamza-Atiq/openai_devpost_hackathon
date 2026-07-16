@@ -1,0 +1,45 @@
+{
+  "input": {
+    "venue_snapshots": [
+      {
+        "venue_id": "V1",
+        "provider_state": "fresh",
+        "fetched_at": "2026-09-01T08:30:00Z"
+      }
+    ],
+    "fixture_risks": {
+      "S14": {
+        "risk": 78.0,
+        "covered": true,
+        "quality": "complete"
+      },
+      "S15": {
+        "risk": null,
+        "covered": false,
+        "quality": "forecast_not_yet_available"
+      }
+    },
+    "weather_coverage": 50.0,
+    "threshold_events": ["S14:precipitation_probability"],
+    "mode": "gpt-5.6"
+  },
+  "output": {
+    "high_risk_fixtures": ["S14"],
+    "uncertainty_notes": [
+      "Coverage is 50.0%; S15 has no forecast yet and its risk remains unknown."
+    ],
+    "threshold_events": ["S14:precipitation_probability"],
+    "alternatives": [
+      "Review a solver-generated repair that avoids the affected venue-time slot."
+    ],
+    "evidence_refs": [
+      {
+        "evidence_id": "weather:snapshot-v1",
+        "evidence_kind": "normalized_weather_risk",
+        "revision": 1,
+        "consumed_fields": ["risk", "covered", "quality", "weather_coverage"]
+      }
+    ],
+    "guidance_disclaimer": "Forecast-based weather risk is planning guidance only, not an official safety decision or a guarantee of forecast precision or washout prevention."
+  }
+}
