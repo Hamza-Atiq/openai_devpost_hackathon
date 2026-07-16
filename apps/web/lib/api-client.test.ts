@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ApiProblemError, CrickOpsApiClient } from "./api-client";
+import { CrickOpsApiClient } from "./api-client";
 
 describe("CrickOpsApiClient", () => {
   it("creates a sample workspace with private same-origin credentials", async () => {
@@ -44,7 +44,6 @@ describe("CrickOpsApiClient", () => {
 
     await expect(
       new CrickOpsApiClient(fetcher).createWorkspace("missing"),
-    ).rejects.toEqual(expect.objectContaining<ApiProblemError>({ code: "invalid_sample" }));
+    ).rejects.toHaveProperty("code", "invalid_sample");
   });
 });
-

@@ -402,7 +402,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Responsive control-room shell with keyboard/focus support and clear guest/privacy entry.
   - **Validation:** Vitest component tests, axe scan, keyboard Playwright entry test.
 
-- [ ] **TASK-039 — Build guided setup, location, slots, and Constraint Ledger**
+- [x] **TASK-039 — Build guided setup, location, slots, and Constraint Ledger**
   - **Release:** V1 required
   - **Dependencies:** TASK-038
   - **Requirements:** FR-004–FR-008, SCHED-005–SCHED-009, SCHED-022–SCHED-029, UX-010–UX-012
