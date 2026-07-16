@@ -130,7 +130,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Twelve unique group pairings, A1–B2 and B1–A2 semifinals, and final dependency with stable IDs.
   - **Validation:** Property tests over renamed teams/groups; expect exactly 15 unique matches and correct dependency graph.
 
-- [ ] **TASK-010 — Model exclusive knockout roles and paths**
+- [x] **TASK-010 — Model exclusive knockout roles and paths**
   - **Release:** V1 required
   - **Dependencies:** TASK-009
   - **Requirements:** SCHED-021, SCHED-030, AC-027
