@@ -6,7 +6,9 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi==0.116.1",
   "httpx==0.28.1",
-  "openai-agents>=0.18,<0.19",
+  "openai-agents[sqlalchemy]>=0.18,<0.19",
+  "aiosqlite>=0.20,<0.22",
+  "asyncpg>=0.30,<0.31",
   "ortools==9.14.6206",
   "tzdata>=2025.2,<2027",
   "uvicorn==0.35.0",

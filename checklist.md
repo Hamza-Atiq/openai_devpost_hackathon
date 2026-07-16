@@ -282,7 +282,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 9 — Agents SDK foundation
 
-- [ ] **TASK-026 — Implement provider, session, and guarded tool infrastructure**
+- [x] **TASK-026 — Implement provider, session, and guarded tool infrastructure**
   - **Release:** V1 required
   - **Dependencies:** TASK-003, TASK-004, TASK-015
   - **Requirements:** AGENT-007–AGENT-014, DATA-005, OBS-001
