@@ -142,7 +142,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 4 — CP-SAT scheduling engine
 
-- [ ] **TASK-011 — Build the hard-feasible CP-SAT model shell**
+- [x] **TASK-011 — Build the hard-feasible CP-SAT model shell**
   - **Release:** V1 required
   - **Dependencies:** TASK-009, TASK-010
   - **Requirements:** SCHED-009, SCHED-014, NFR-001
