@@ -186,7 +186,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Deterministic report with input digest, placement digest, validator version, checks, violations, and timestamp.
   - **Validation:** Dependency test proves validator does not import `scheduling.model`; valid golden schedule passes.
 
-- [ ] **TASK-016 — Add validator mutation suite**
+- [x] **TASK-016 — Add validator mutation suite**
   - **Release:** V1 required
   - **Dependencies:** TASK-015
   - **Requirements:** SCHED-009, SCHED-020–SCHED-021, SCHED-029–SCHED-030, AC-026–AC-027
