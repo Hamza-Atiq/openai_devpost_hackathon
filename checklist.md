@@ -122,7 +122,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 3 — Tournament-format and pairing engine
 
-- [ ] **TASK-009 — Generate the fixed 15-match graph**
+- [x] **TASK-009 — Generate the fixed 15-match graph**
   - **Release:** V1 required
   - **Dependencies:** TASK-006
   - **Requirements:** SCHED-001–SCHED-004, AC-001
