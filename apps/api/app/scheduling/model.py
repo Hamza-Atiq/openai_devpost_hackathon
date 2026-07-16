@@ -29,6 +29,7 @@ def solve_hard_feasible_schedule(
     minimum_rest_minutes: int = 0,
     objective_cost_by_placement: Mapping[tuple[UUID, UUID], int] | None = None,
     fixed_cost_totals: Sequence[tuple[Mapping[tuple[UUID, UUID], int], int]] = (),
+    max_time_seconds: float = 30,
 ) -> SolverResult:
     """Solve the TASK-011 placement shell with deterministic CP-SAT settings."""
     ordered_matches = tuple(sorted(matches, key=lambda match: match.sequence))
@@ -39,6 +40,8 @@ def solve_hard_feasible_schedule(
         )
     if minimum_rest_minutes < 0:
         raise ValueError("minimum_rest_minutes cannot be negative")
+    if max_time_seconds <= 0:
+        raise ValueError("max_time_seconds must be positive")
 
     ordered_slots = tuple(
         sorted(tournament.slots, key=lambda slot: (slot.starts_at_utc, str(slot.id)))
@@ -108,7 +111,7 @@ def solve_hard_feasible_schedule(
     solver = cp_model.CpSolver()
     solver.parameters.num_search_workers = 1
     solver.parameters.random_seed = 0
-    solver.parameters.max_time_in_seconds = 30
+    solver.parameters.max_time_in_seconds = max_time_seconds
     cp_status = solver.solve(model)
     cp_status_name = solver.status_name(cp_status)
 

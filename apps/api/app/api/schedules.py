@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
 from pydantic import Field
@@ -12,6 +13,7 @@ from app.api.problems import APIProblem
 from app.api.routes import require_workspace
 from app.api.workspace import GuestWorkspace
 from app.domain.common import DomainModel
+from app.domain.matches import MatchDefinition, MatchStage
 from app.domain.schedules import ScheduleMetrics, ScheduleProfile
 from app.domain.venues import SlotAvailability
 from app.fairness.evaluator import evaluate_schedule_metrics
@@ -19,7 +21,7 @@ from app.optimization.config import load_optimization_config
 from app.scheduling.comparison import compare_profile_options
 from app.scheduling.diff import build_schedule_diff
 from app.scheduling.pairings import generate_match_graph
-from app.scheduling.profiles import generate_profile_options
+from app.scheduling.profiles import ComponentPenalties, generate_profile_options
 from app.scheduling.repair import RepairStatus, repair_schedule
 
 
@@ -84,13 +86,105 @@ def _eligibility(workspace: GuestWorkspace):
     if tournament is None:
         return (), {}
     matches = generate_match_graph(tournament)
-    indexes = (*range(0, 12, 2), *range(1, 12, 2), 12, 13, 14)
-    if len(tournament.slots) < 15:
+    available_slot_ids = frozenset(
+        slot.id
+        for slot in tournament.slots
+        if slot.availability is SlotAvailability.AVAILABLE
+    )
+    if len(available_slot_ids) < 15:
         return matches, {match.id: frozenset() for match in matches}
-    return matches, {
-        match.id: frozenset((tournament.slots[index].id,))
-        for match, index in zip(matches, indexes, strict=True)
+    return matches, {match.id: available_slot_ids for match in matches}
+
+
+def _slot_category(local_hour: int) -> str:
+    if 6 <= local_hour <= 11:
+        return "morning"
+    if 12 <= local_hour <= 16:
+        return "day"
+    if 17 <= local_hour <= 22:
+        return "evening"
+    return "off_hours"
+
+
+def _component_penalties(
+    workspace: GuestWorkspace,
+    matches: tuple[MatchDefinition, ...],
+    eligibility: dict[UUID, frozenset[UUID]],
+) -> ComponentPenalties:
+    """Translate confirmed workspace state into bounded placement costs.
+
+    Exact comparable metrics are still calculated after solving. These costs
+    provide CP-SAT with real choices instead of preselecting one slot per match.
+    """
+    tournament = workspace.tournament
+    if tournament is None:
+        raise ValueError("tournament is required for objective construction")
+    config = load_optimization_config()
+    risks = _weather_risk_by_slot(workspace)
+    missing_risk = config.profiles["balanced"].missing_coverage_penalty
+    ordered_slots = tuple(
+        sorted(tournament.slots, key=lambda slot: (slot.starts_at_utc, str(slot.id)))
+    )
+    slot_by_id = {slot.id: slot for slot in ordered_slots}
+    venue_by_id = {venue.id: venue for venue in tournament.venues}
+    venue_index = {venue.id: index for index, venue in enumerate(tournament.venues)}
+    distinct_starts = tuple(sorted({slot.starts_at_utc for slot in ordered_slots}))
+    start_rank = {starts_at: index for index, starts_at in enumerate(distinct_starts)}
+    last_rank = max(len(distinct_starts) - 1, 1)
+    categories = tuple(
+        dict.fromkeys(
+            _slot_category(
+                slot.starts_at_utc.astimezone(
+                    ZoneInfo(venue_by_id[slot.venue_id].iana_time_zone)
+                ).hour
+            )
+            for slot in ordered_slots
+        )
+    ) or ("off_hours",)
+    penalties: dict[str, dict[tuple[UUID, UUID], int]] = {
+        name: {}
+        for name in (
+            "weather_coverage",
+            "rest",
+            "venue_balance",
+            "slot_balance",
+            "organizer_preferences",
+            "audience_timing",
+        )
     }
+    for match in matches:
+        target_venue = (match.sequence - 1) % len(tournament.venues)
+        target_category = categories[(match.sequence - 1) % len(categories)]
+        for slot_id in eligibility[match.id]:
+            slot = slot_by_id[slot_id]
+            venue = venue_by_id[slot.venue_id]
+            local = slot.starts_at_utc.astimezone(ZoneInfo(venue.iana_time_zone))
+            category = _slot_category(local.hour)
+            key = (match.id, slot_id)
+            risk = risks.get(slot_id)
+            weather_penalty = Decimal(missing_risk) if risk is None else risk
+            penalties["weather_coverage"][key] = int(
+                min(Decimal(100), max(Decimal(0), weather_penalty))
+            )
+            rank = start_rank[slot.starts_at_utc]
+            rest_rank = rank if match.stage is MatchStage.GROUP else last_rank - rank
+            penalties["rest"][key] = round(rest_rank * 100 / last_rank)
+            penalties["venue_balance"][key] = (
+                0 if venue_index[slot.venue_id] == target_venue else 100
+            )
+            penalties["slot_balance"][key] = 0 if category == target_category else 100
+            penalties["organizer_preferences"][key] = 0
+            if match.stage is MatchStage.GROUP:
+                penalties["audience_timing"][key] = 0
+            elif category == "evening":
+                penalties["audience_timing"][key] = 0
+            elif local.weekday() >= 5:
+                penalties["audience_timing"][key] = 30
+            elif category == "off_hours":
+                penalties["audience_timing"][key] = 100
+            else:
+                penalties["audience_timing"][key] = 60
+    return penalties
 
 
 def build_schedule_router() -> APIRouter:
@@ -139,6 +233,7 @@ def build_schedule_router() -> APIRouter:
             eligibility,
             generated_at=datetime.now(UTC),
             metric_evaluator=_metric_evaluator(workspace, matches),
+            component_penalties=_component_penalties(workspace, matches, eligibility),
         )
         if batch.failures:
             raise APIProblem(

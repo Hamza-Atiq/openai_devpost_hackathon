@@ -96,6 +96,7 @@ def generate_profile_options(
     custom_priorities: dict[str, int] | None = None,
     minimum_rest_minutes: int = 0,
     component_penalties: ComponentPenalties | None = None,
+    solver_time_limit_seconds: float = 20,
 ) -> ProfileGenerationBatch:
     config = load_optimization_config()
     profile_order = [
@@ -125,6 +126,7 @@ def generate_profile_options(
             eligible_slot_ids_by_match,
             minimum_rest_minutes=minimum_rest_minutes,
             objective_cost_by_placement=objective_costs,
+            max_time_seconds=solver_time_limit_seconds,
         )
         if not isinstance(solver_result, FeasibleSolverResult):
             return ProfileGenerationFailure(profile=profile, reason=solver_result.cp_sat_status)
