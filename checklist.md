@@ -254,7 +254,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Dated evidence for evaluation/prototyping use, call limits, required attribution, and commercial follow-up.
   - **Validation:** Human review against current official pricing/licensing pages; record reviewer/date/source links.
 
-- [ ] **TASK-023 — Implement geocoding and shared-timezone confirmation**
+- [x] **TASK-023 — Implement geocoding and shared-timezone confirmation**
   - **Release:** V1 required
   - **Dependencies:** TASK-006, TASK-022
   - **Requirements:** SCHED-026–SCHED-028, AC-024
