@@ -8,6 +8,7 @@ from ortools.sat.python import cp_model
 from app.domain.matches import MatchDefinition
 from app.domain.tournament import TournamentConfig
 from app.domain.venues import SlotAvailability
+from app.scheduling.chronology import add_chronology_constraints
 from app.scheduling.intervals import add_venue_interval_constraints
 from app.scheduling.pairings import generate_match_graph
 from app.scheduling.solver_result import (
@@ -25,6 +26,7 @@ def solve_hard_feasible_schedule(
     eligible_slot_ids_by_match: Mapping[UUID, frozenset[UUID]],
     *,
     required_slot_by_match: Mapping[UUID, UUID] | None = None,
+    minimum_rest_minutes: int = 0,
 ) -> SolverResult:
     """Solve the TASK-011 placement shell with deterministic CP-SAT settings."""
     ordered_matches = tuple(sorted(matches, key=lambda match: match.sequence))
@@ -33,6 +35,8 @@ def solve_hard_feasible_schedule(
             evidence_codes=(InfeasibilityCode.INVALID_MATCH_GRAPH,),
             cp_sat_status="PRECHECK_REJECTED",
         )
+    if minimum_rest_minutes < 0:
+        raise ValueError("minimum_rest_minutes cannot be negative")
 
     ordered_slots = tuple(
         sorted(tournament.slots, key=lambda slot: (slot.starts_at_utc, str(slot.id)))
@@ -73,6 +77,15 @@ def solve_hard_feasible_schedule(
         ordered_matches,
         ordered_slots,
         tournament.allocation_minutes,
+    )
+    add_chronology_constraints(
+        model,
+        placement,
+        tournament,
+        ordered_matches,
+        ordered_slots,
+        eligible_slot_ids_by_match,
+        minimum_rest_minutes,
     )
 
     for match_id, slot_id in pins.items():

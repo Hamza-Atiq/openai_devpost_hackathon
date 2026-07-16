@@ -10,9 +10,10 @@ from tests.domain.factories import valid_tournament
 def test_solves_exactly_one_unique_eligible_slot_per_fixed_match() -> None:
     tournament = valid_tournament()
     matches = generate_match_graph(tournament)
+    slot_indexes = (*range(0, 12, 2), *range(1, 12, 2), 12, 13, 14)
     eligible = {
-        match.id: frozenset((tournament.slots[index].id,))
-        for index, match in enumerate(matches)
+        match.id: frozenset((tournament.slots[slot_index].id,))
+        for match, slot_index in zip(matches, slot_indexes, strict=True)
     }
 
     result = solve_hard_feasible_schedule(tournament, matches, eligible)

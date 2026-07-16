@@ -47,11 +47,17 @@ def _tournament_with_starts(
 
 def _solve_uniquely(tournament: TournamentConfig):
     matches = generate_match_graph(tournament)
+    slot_indexes = (*range(0, 12, 2), *range(1, 12, 2), 12, 13, 14)
     eligible = {
-        match.id: frozenset((tournament.slots[index].id,))
-        for index, match in enumerate(matches)
+        match.id: frozenset((tournament.slots[slot_index].id,))
+        for match, slot_index in zip(matches, slot_indexes, strict=True)
     }
     return solve_hard_feasible_schedule(tournament, matches, eligible)
+
+
+def _paired_day_starts(second_start_hour: int) -> tuple[int, ...]:
+    starts = [hour for day in range(7) for hour in (day * 24, day * 24 + second_start_hour)]
+    return (*starts, 7 * 24)
 
 
 def test_allocation_bounds_use_tournament_preset_duration() -> None:
@@ -68,7 +74,7 @@ def test_allocation_bounds_use_tournament_preset_duration() -> None:
 def test_partial_same_venue_overlap_is_infeasible() -> None:
     tournament = _tournament_with_starts(
         MatchFormatPreset.T20,
-        (0, 3, *range(8, 60, 4)),
+        _paired_day_starts(3),
     )
 
     assert _solve_uniquely(tournament).status is SolverStatus.INFEASIBLE
@@ -77,7 +83,7 @@ def test_partial_same_venue_overlap_is_infeasible() -> None:
 def test_identical_intervals_with_different_slot_ids_are_infeasible() -> None:
     tournament = _tournament_with_starts(
         MatchFormatPreset.T20,
-        (0, 0, *range(4, 56, 4)),
+        _paired_day_starts(0),
     )
 
     assert _solve_uniquely(tournament).status is SolverStatus.INFEASIBLE
@@ -86,7 +92,7 @@ def test_identical_intervals_with_different_slot_ids_are_infeasible() -> None:
 def test_allocation_block_must_fit_inside_slot_availability() -> None:
     tournament = _tournament_with_starts(
         MatchFormatPreset.T20,
-        tuple(range(0, 60, 4)),
+        _paired_day_starts(4),
         availability_hours=3,
     )
 
@@ -94,7 +100,7 @@ def test_allocation_block_must_fit_inside_slot_availability() -> None:
 
 
 def test_same_start_pattern_has_t10_capacity_but_not_t20_capacity() -> None:
-    starts = tuple(range(0, 30, 2))
+    starts = _paired_day_starts(2)
     t10 = _tournament_with_starts(MatchFormatPreset.T10, starts)
     t20 = _tournament_with_starts(MatchFormatPreset.T20, starts)
 
@@ -105,7 +111,7 @@ def test_same_start_pattern_has_t10_capacity_but_not_t20_capacity() -> None:
 def test_separated_t20_intervals_are_feasible() -> None:
     tournament = _tournament_with_starts(
         MatchFormatPreset.T20,
-        tuple(range(0, 60, 4)),
+        _paired_day_starts(4),
     )
 
     assert _solve_uniquely(tournament).status is SolverStatus.FEASIBLE

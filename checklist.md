@@ -158,7 +158,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Optional fixed-duration intervals use per-venue `NoOverlap`; complete blocks fit availability.
   - **Validation:** Run focused solver tests; every overlapping/overflow case is infeasible and valid separated intervals pass.
 
-- [ ] **TASK-013 — Enforce team/day, rest, and stage chronology**
+- [x] **TASK-013 — Enforce team/day, rest, and stage chronology**
   - **Release:** V1 required
   - **Dependencies:** TASK-011, TASK-012
   - **Requirements:** SCHED-020–SCHED-021, SCHED-026–SCHED-027, AC-001, AC-021, AC-027
