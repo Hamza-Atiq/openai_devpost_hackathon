@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
@@ -13,6 +14,8 @@ from app.api.workspace import GuestWorkspace
 from app.domain.common import DomainModel
 from app.domain.schedules import ScheduleMetrics, ScheduleProfile
 from app.domain.venues import SlotAvailability
+from app.fairness.evaluator import evaluate_schedule_metrics
+from app.optimization.config import load_optimization_config
 from app.scheduling.comparison import compare_profile_options
 from app.scheduling.diff import build_schedule_diff
 from app.scheduling.pairings import generate_match_graph
@@ -41,23 +44,39 @@ def _uuid7() -> UUID:
     return UUID(bytes=bytes(raw))
 
 
-def _metrics(profile: ScheduleProfile, _placements) -> ScheduleMetrics:
-    adjustments = {
-        ScheduleProfile.BALANCED: (28, 82),
-        ScheduleProfile.WEATHER_FIRST: (20, 76),
-        ScheduleProfile.FAIRNESS_FIRST: (34, 90),
-        ScheduleProfile.CUSTOM: (26, 84),
-    }
-    weather, rest = adjustments[profile]
-    return ScheduleMetrics(
-        weather_risk=weather,
-        weather_coverage=100,
-        group_rest_fairness=rest,
-        potential_knockout_rest=rest - 4,
-        venue_balance=85,
-        slot_balance=84,
-        preference_satisfaction=80,
-    )
+def _weather_risk_by_slot(workspace: GuestWorkspace) -> dict[UUID, Decimal | None]:
+    raw = workspace.weather.get("slot_risks", {})
+    if not isinstance(raw, dict):
+        return {}
+    result: dict[UUID, Decimal | None] = {}
+    for slot_id, risk in raw.items():
+        try:
+            identifier = UUID(str(slot_id))
+        except ValueError:
+            continue
+        result[identifier] = None if risk is None else Decimal(str(risk))
+    return result
+
+
+def _metric_evaluator(workspace: GuestWorkspace, matches):
+    if workspace.tournament is None:
+        raise ValueError("tournament is required for metric evaluation")
+    config = load_optimization_config()
+    risks = _weather_risk_by_slot(workspace)
+
+    def evaluate(profile: ScheduleProfile, placements) -> ScheduleMetrics:
+        profile_name = "balanced" if profile is ScheduleProfile.CUSTOM else profile.value
+        return evaluate_schedule_metrics(
+            workspace.tournament,
+            matches,
+            placements,
+            slot_weather_risk=risks,
+            missing_coverage_penalty=Decimal(
+                config.profiles[profile_name].missing_coverage_penalty
+            ),
+        )
+
+    return evaluate
 
 
 def _eligibility(workspace: GuestWorkspace):
@@ -119,7 +138,7 @@ def build_schedule_router() -> APIRouter:
             matches,
             eligibility,
             generated_at=datetime.now(UTC),
-            metric_evaluator=_metrics,
+            metric_evaluator=_metric_evaluator(workspace, matches),
         )
         if batch.failures:
             raise APIProblem(
@@ -407,7 +426,9 @@ def build_schedule_router() -> APIRouter:
         repaired = baseline.model_copy(
             update={
                 "placements": result.placements,
-                "metrics": _metrics(baseline.profile, result.placements),
+                "metrics": _metric_evaluator(workspace, matches)(
+                    baseline.profile, result.placements
+                ),
                 "validation_report": result.validation_report,
             }
         )

@@ -2,10 +2,13 @@
 
 import { useMemo, useState } from "react";
 
+import { ApiProblemError, CrickOpsApiClient } from "@/lib/api-client";
 import { allocationMinutes, type MatchFormatPreset } from "@/lib/setup-state";
 
 type GuidedSetupProps = {
   conflict?: "stale" | null;
+  revision?: number;
+  apiClient?: Pick<CrickOpsApiClient, "confirmSetup">;
 };
 
 const constraints = [
@@ -16,15 +19,39 @@ const constraints = [
   ["Audience timing", "Prefer prime-time and weekend slots", "Preferred"],
 ] as const;
 
-export function GuidedSetup({ conflict = null }: GuidedSetupProps) {
+export function GuidedSetup({
+  conflict = null,
+  revision = 0,
+  apiClient = new CrickOpsApiClient(),
+}: GuidedSetupProps) {
   const [format, setFormat] = useState<MatchFormatPreset>("T20");
   const [manualCoordinates, setManualCoordinates] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [setupStatus, setSetupStatus] = useState<"pending" | "saving" | "ready" | "error">("pending");
+  const [staleConflict, setStaleConflict] = useState(conflict === "stale");
   const allocation = useMemo(() => allocationMinutes(format), [format]);
+
+  async function confirmHardConstraints() {
+    setSetupStatus("saving");
+    setStaleConflict(false);
+    try {
+      const result = await apiClient.confirmSetup({
+        confirmation: true,
+        expected_revision: revision,
+        selection: { match_format_preset: format, allocation_minutes: allocation },
+      });
+      setSetupStatus(result.ready ? "ready" : "error");
+    } catch (error) {
+      if (error instanceof ApiProblemError && error.code === "stale_tournament_revision") {
+        setStaleConflict(true);
+      }
+      setSetupStatus("error");
+    }
+  }
 
   return (
     <div className="guided-setup">
-      {conflict === "stale" && (
+      {staleConflict && (
         <div className="conflict-banner" role="alert">
           <div>
             <strong>Tournament setup changed in another request</strong>
@@ -102,7 +129,20 @@ export function GuidedSetup({ conflict = null }: GuidedSetupProps) {
           ))}
         </div>
         <label className="confirm-check"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /><span>I reviewed the hard constraints and confirm they reflect the tournament.</span></label>
-        <button className="primary-action" type="button" disabled={!confirmed}>Confirm hard constraints</button>
+        <p className="setup-save-status" aria-live="polite">
+          {setupStatus === "pending" && "Confirmation pending"}
+          {setupStatus === "saving" && "Saving confirmed constraints…"}
+          {setupStatus === "ready" && "Setup ready for schedule generation"}
+          {setupStatus === "error" && !staleConflict && "Setup could not be confirmed. Review the fields and try again."}
+        </p>
+        <button
+          className="primary-action"
+          type="button"
+          disabled={!confirmed || setupStatus === "saving"}
+          onClick={confirmHardConstraints}
+        >
+          Confirm hard constraints
+        </button>
       </section>
     </div>
   );

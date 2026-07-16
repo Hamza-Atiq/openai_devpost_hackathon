@@ -110,3 +110,41 @@ def test_infeasible_runs_are_failures_and_never_displayed_as_options() -> None:
 
     assert batch.options == ()
     assert len(batch.failures) == 3
+
+
+def test_profile_weights_drive_distinct_solver_objectives() -> None:
+    tournament = valid_tournament()
+    matches = generate_match_graph(tournament)
+    eligible = _valid_unique_eligibility(tournament, matches)
+    final = matches[-1]
+    early_final, late_final = tournament.slots[14], tournament.slots[15]
+    eligible[final.id] = frozenset((early_final.id, late_final.id))
+    component_penalties = {
+        "weather_coverage": {
+            (final.id, early_final.id): 100,
+            (final.id, late_final.id): 0,
+        },
+        "rest": {
+            (final.id, early_final.id): 0,
+            (final.id, late_final.id): 100,
+        },
+    }
+
+    batch = generate_profile_options(
+        tournament,
+        matches,
+        eligible,
+        generated_at=GENERATED_AT,
+        metric_evaluator=_metrics,
+        component_penalties=component_penalties,
+    )
+    final_slots = {
+        option.profile: next(
+            placement.slot_id for placement in option.placements if placement.match_id == final.id
+        )
+        for option in batch.options
+    }
+
+    assert final_slots[ScheduleProfile.WEATHER_FIRST] == late_final.id
+    assert final_slots[ScheduleProfile.FAIRNESS_FIRST] == early_final.id
+    assert all(option.validation_report.valid for option in batch.options)

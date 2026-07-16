@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from app.domain.common import DomainModel
@@ -21,6 +21,31 @@ from app.validation.validator import validate_schedule
 from app.validation.violations import IndependentValidationReport
 
 MetricEvaluator = Callable[[ScheduleProfile, tuple[FixturePlacement, ...]], ScheduleMetrics]
+PlacementKey = tuple[UUID, UUID]
+ComponentPenalties = Mapping[str, Mapping[PlacementKey, int]]
+
+
+def _weighted_objective_costs(
+    component_penalties: ComponentPenalties,
+    profile_weights: Mapping[str, Decimal | int],
+) -> dict[PlacementKey, int]:
+    keys = {
+        key
+        for penalties in component_penalties.values()
+        for key in penalties
+    }
+    for penalties in component_penalties.values():
+        if any(value < 0 or value > 100 for value in penalties.values()):
+            raise ValueError("soft objective penalties must be between 0 and 100")
+    return {
+        key: int(
+            sum(
+                Decimal(str(profile_weights.get(component, 0))) * Decimal(penalties.get(key, 0))
+                for component, penalties in component_penalties.items()
+            ).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        )
+        for key in keys
+    }
 
 
 class GeneratedProfileOption(DomainModel):
@@ -70,6 +95,7 @@ def generate_profile_options(
     metric_evaluator: MetricEvaluator,
     custom_priorities: dict[str, int] | None = None,
     minimum_rest_minutes: int = 0,
+    component_penalties: ComponentPenalties | None = None,
 ) -> ProfileGenerationBatch:
     config = load_optimization_config()
     profile_order = [
@@ -88,11 +114,17 @@ def generate_profile_options(
     checksum = config_checksum()
 
     def generate(profile: ScheduleProfile) -> GeneratedProfileOption | ProfileGenerationFailure:
+        objective_costs = (
+            _weighted_objective_costs(component_penalties, weights[profile])
+            if component_penalties is not None
+            else None
+        )
         solver_result = solve_hard_feasible_schedule(
             tournament,
             matches,
             eligible_slot_ids_by_match,
             minimum_rest_minutes=minimum_rest_minutes,
+            objective_cost_by_placement=objective_costs,
         )
         if not isinstance(solver_result, FeasibleSolverResult):
             return ProfileGenerationFailure(profile=profile, reason=solver_result.cp_sat_status)

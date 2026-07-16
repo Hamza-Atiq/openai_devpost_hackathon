@@ -22,6 +22,12 @@ class ConfirmationInput(DomainModel):
     confirmation: bool
 
 
+class ConfirmConstraintsInput(DomainModel):
+    confirmation: bool
+    expected_revision: int = Field(ge=0)
+    selection: Mapping[str, Any]
+
+
 class WeatherRefreshInput(DomainModel):
     mode: Literal["live", "deterministic"] = "live"
     venue_ids: tuple[str, ...] = ()
@@ -52,6 +58,7 @@ def _workspace_view(workspace: GuestWorkspace) -> dict[str, object]:
             workspace.tournament.model_dump(mode="json") if workspace.tournament else None
         ),
         "weather": workspace.weather,
+        "constraint_confirmation": workspace.constraint_confirmation,
     }
 
 
@@ -221,11 +228,47 @@ def build_v1_router(store: GuestWorkspaceStore) -> APIRouter:
 
     @router.post("/constraints/confirm")
     def confirm_constraints(
-        body: dict[str, Any],
+        body: ConfirmConstraintsInput,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ) -> dict[str, object]:
-        del workspace
-        return {"status": "confirmed", "selection": body}
+        if workspace.tournament is None:
+            raise APIProblem(
+                status=409,
+                code="tournament_not_ready",
+                title="Tournament is not ready",
+                detail="Create or load a tournament before confirming constraints.",
+            )
+        if not body.confirmation:
+            raise APIProblem(
+                status=422,
+                code="confirmation_required",
+                title="Confirmation required",
+                detail="Review and explicitly confirm the hard constraints.",
+            )
+        if body.expected_revision != workspace.tournament.revision:
+            raise APIProblem(
+                status=409,
+                code="stale_tournament_revision",
+                title="Tournament revision is stale",
+                detail="Reload the latest setup before confirming constraints.",
+                retryable=True,
+            )
+
+        from app.domain.tournament import TournamentStatus
+
+        next_revision = workspace.tournament.revision + 1
+        workspace.tournament = workspace.tournament.model_copy(
+            update={"status": TournamentStatus.READY_TO_SCHEDULE, "revision": next_revision}
+        )
+        workspace.constraint_confirmation = {
+            "selection": dict(body.selection),
+            "confirmed_revision": next_revision,
+        }
+        return {
+            "status": TournamentStatus.READY_TO_SCHEDULE,
+            "revision": next_revision,
+            "selection": body.selection,
+        }
 
     @router.post("/constraints/reject")
     def reject_constraints(
@@ -241,9 +284,16 @@ def build_v1_router(store: GuestWorkspaceStore) -> APIRouter:
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ) -> dict[str, object]:
         del body
+        from app.domain.tournament import TournamentStatus
+
+        ready = (
+            workspace.tournament is not None
+            and workspace.tournament.status is TournamentStatus.READY_TO_SCHEDULE
+            and workspace.constraint_confirmation is not None
+        )
         return {
-            "ready": workspace.tournament is not None,
-            "violations": [] if workspace.tournament else ["tournament_missing"],
+            "ready": ready,
+            "violations": [] if ready else ["constraints_not_confirmed"],
         }
 
     @router.post("/weather/refresh")

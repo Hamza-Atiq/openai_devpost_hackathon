@@ -28,6 +28,7 @@ class GuestWorkspace:
     edits: dict[str, dict[str, object]] = field(default_factory=dict)
     disruptions: dict[str, dict[str, object]] = field(default_factory=dict)
     schedule_diffs: dict[str, dict[str, object]] = field(default_factory=dict)
+    constraint_confirmation: dict[str, object] | None = None
 
 
 class GuestWorkspaceStore:
