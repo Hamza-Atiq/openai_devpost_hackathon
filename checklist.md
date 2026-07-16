@@ -206,7 +206,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Exact profile weights, risk thresholds, slot categories, missing-coverage penalties, normalization, and rounding match spec Section 17.
   - **Validation:** Golden checksum and configuration-schema tests pass; all weights and ranges are bounded.
 
-- [ ] **TASK-018 — Implement deterministic schedule metrics**
+- [x] **TASK-018 — Implement deterministic schedule metrics**
   - **Release:** V1 required
   - **Dependencies:** TASK-015, TASK-017
   - **Requirements:** FR-012–FR-013, FAIR-001–FAIR-005, WEATHER-012, AC-025
