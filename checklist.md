@@ -226,7 +226,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 7 — Schedule-repair engine
 
-- [ ] **TASK-020 — Implement sequential lexicographic repair**
+- [x] **TASK-020 — Implement sequential lexicographic repair**
   - **Release:** V1 required
   - **Dependencies:** TASK-016, TASK-018
   - **Requirements:** RECOVERY-001–RECOVERY-008, SCHED-029–SCHED-030, AC-008

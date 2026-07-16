@@ -27,6 +27,8 @@ def solve_hard_feasible_schedule(
     *,
     required_slot_by_match: Mapping[UUID, UUID] | None = None,
     minimum_rest_minutes: int = 0,
+    objective_cost_by_placement: Mapping[tuple[UUID, UUID], int] | None = None,
+    fixed_cost_totals: Sequence[tuple[Mapping[tuple[UUID, UUID], int], int]] = (),
 ) -> SolverResult:
     """Solve the TASK-011 placement shell with deterministic CP-SAT settings."""
     ordered_matches = tuple(sorted(matches, key=lambda match: match.sequence))
@@ -45,8 +47,7 @@ def solve_hard_feasible_schedule(
     slot_ids = {slot.id for slot in ordered_slots}
     pins = required_slot_by_match or {}
     has_invalid_pin = any(
-        match_id not in match_ids or slot_id not in slot_ids
-        for match_id, slot_id in pins.items()
+        match_id not in match_ids or slot_id not in slot_ids for match_id, slot_id in pins.items()
     )
     if has_invalid_pin:
         return InfeasibleSolverResult(
@@ -91,6 +92,19 @@ def solve_hard_feasible_schedule(
     for match_id, slot_id in pins.items():
         model.add(placement[(match_id, slot_id)] == 1)
 
+    for cost_by_placement, required_total in fixed_cost_totals:
+        model.add(
+            sum(cost_by_placement.get(key, 0) * variable for key, variable in placement.items())
+            == required_total
+        )
+    if objective_cost_by_placement is not None:
+        model.minimize(
+            sum(
+                objective_cost_by_placement.get(key, 0) * variable
+                for key, variable in placement.items()
+            )
+        )
+
     solver = cp_model.CpSolver()
     solver.parameters.num_search_workers = 1
     solver.parameters.random_seed = 0
@@ -105,7 +119,14 @@ def solve_hard_feasible_schedule(
             for slot in ordered_slots
             if solver.boolean_value(placement[(match.id, slot.id)])
         )
-        return FeasibleSolverResult(placements=placements, cp_sat_status=cp_status_name)
+        objective_value = (
+            int(round(solver.objective_value)) if objective_cost_by_placement is not None else 0
+        )
+        return FeasibleSolverResult(
+            placements=placements,
+            cp_sat_status=cp_status_name,
+            objective_value=objective_value,
+        )
 
     evidence_code = {
         cp_model.INFEASIBLE: InfeasibilityCode.CP_SAT_INFEASIBLE,

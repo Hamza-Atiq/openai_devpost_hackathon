@@ -29,6 +29,7 @@ class FeasibleSolverResult(DomainModel):
     placements: tuple[SolverPlacement, ...]
     evidence_codes: tuple[InfeasibilityCode, ...] = ()
     cp_sat_status: str
+    objective_value: int = 0
 
 
 class InfeasibleSolverResult(DomainModel):
@@ -36,6 +37,7 @@ class InfeasibleSolverResult(DomainModel):
     placements: tuple[()] = ()
     evidence_codes: tuple[InfeasibilityCode, ...]
     cp_sat_status: str
+    objective_value: None = None
 
 
 type SolverResult = FeasibleSolverResult | InfeasibleSolverResult
