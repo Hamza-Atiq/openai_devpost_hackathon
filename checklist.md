@@ -290,7 +290,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** GPT-5.6 primary, compatible fallback, SQLAlchemySession, Pydantic outputs, guarded `function_tool` wrappers, deterministic-mode result.
   - **Validation:** Provider/schema/tool-authorization tests pass for primary, fallback, invalid output, and outage.
 
-- [ ] **TASK-027 — Implement mode health, retries, and circuit breakers**
+- [x] **TASK-027 — Implement mode health, retries, and circuit breakers**
   - **Release:** V1 required
   - **Dependencies:** TASK-026
   - **Requirements:** FR-028–FR-030, NFR-005, FAIL-007–FAIL-008, OBS-004
