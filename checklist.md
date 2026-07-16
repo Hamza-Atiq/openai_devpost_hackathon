@@ -262,7 +262,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Venue name is separate; city/country/admin/postal search returns bounded candidates; organizer confirms coordinates/timezone; mismatch is rejected.
   - **Validation:** Mock API tests cover candidates, no result, manual fallback, and cross-timezone rejection.
 
-- [ ] **TASK-024 — Implement normalized live weather and risk/coverage**
+- [x] **TASK-024 — Implement normalized live weather and risk/coverage**
   - **Release:** V1 required
   - **Dependencies:** TASK-017, TASK-023
   - **Requirements:** WEATHER-001, WEATHER-003–WEATHER-010, WEATHER-012, AC-005, AC-025
