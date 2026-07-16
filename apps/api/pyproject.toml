@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi==0.116.1",
   "openai-agents>=0.18,<0.19",
+  "tzdata>=2025.2,<2027",
   "uvicorn==0.35.0",
 ]
 

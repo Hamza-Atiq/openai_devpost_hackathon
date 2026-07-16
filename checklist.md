@@ -78,7 +78,7 @@ vercel.json pnpm-workspace.yaml README.md AGENTS.md
   - **Expected output:** Configured provider either passes the same application schemas, tool safety, deterministic checks, and approval protections or is explicitly disabled in favor of deterministic mode.
   - **Validation:** Run valid, invalid-schema, unsupported-tool, timeout, and hard-constraint-override cases; record evidence.
 
-- [ ] **TASK-005 — Spike hosted session, cookie, proxy, and cache behavior**
+- [x] **TASK-005 — Spike hosted session, cookie, proxy, and cache behavior**
   - **Release:** V1 required, blocking
   - **Dependencies:** TASK-002
   - **Requirements:** DEPLOY-008, SEC-001–SEC-003, NFR-006
@@ -88,9 +88,13 @@ vercel.json pnpm-workspace.yaml README.md AGENTS.md
 
 **QUALITY-GATE-01:** TASK-003, TASK-004, and TASK-005 must pass or produce an approved document amendment before domain implementation begins.
 
+Approved amendment (2026-07-16): production proxy/cookie/cache/CSRF behavior was
+verified live; preview-to-production isolation is accepted here via deterministic
+environment-bound cookie tests and will be repeated on live preview in TASK-056.
+
 ## Milestone 2 — Domain models and sample tournament
 
-- [ ] **TASK-006 — Implement immutable domain contracts**
+- [x] **TASK-006 — Implement immutable domain contracts**
   - **Release:** V1 required
   - **Dependencies:** QUALITY-GATE-01
   - **Requirements:** DATA-001–DATA-005, SCHED-001–SCHED-009, SCHED-022–SCHED-030
