@@ -48,3 +48,11 @@ def test_secret_scanner_configuration_covers_source_and_build_artifacts() -> Non
 
     for artifact in ("apps/web/.next", "apps/web/public", "apps/web/out"):
         assert re.search(public_artifact_rule["path"], f"{artifact}/bundle.js")
+
+
+def test_local_environment_files_are_ignored_but_example_is_tracked() -> None:
+    ignore_patterns = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+
+    assert ".env" in ignore_patterns
+    assert ".env.*" in ignore_patterns
+    assert "!.env.example" in ignore_patterns
