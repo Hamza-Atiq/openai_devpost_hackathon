@@ -1,0 +1,32 @@
+{
+  "input": {
+    "workspace_summary": {
+      "official_version": null,
+      "validated_options": ["balanced", "weather-first", "fairness-first"]
+    },
+    "tournament_revision": 4,
+    "user_message": "Which option best matches my confirmed priorities?",
+    "pending_actions": [],
+    "mode": "gpt-5.6"
+  },
+  "output": {
+    "message": "Balanced best matches the confirmed priorities using the validated comparison. Select Approve schedule to make it official.",
+    "proposed_state_changes": [],
+    "specialist_requests": [],
+    "evidence_refs": [
+      {
+        "evidence_id": "comparison:revision-4:balanced",
+        "evidence_kind": "validated_schedule_comparison",
+        "revision": 4,
+        "consumed_fields": ["validation_status", "weather_risk"]
+      }
+    ],
+    "ui_actions": [
+      {
+        "action": "request_schedule_approval",
+        "target_id": "balanced-draft",
+        "label": "Approve schedule"
+      }
+    ]
+  }
+}

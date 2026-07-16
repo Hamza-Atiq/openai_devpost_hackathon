@@ -1,0 +1,26 @@
+{
+  "input": {
+    "current_constraints": [],
+    "user_text": "Put the rivalry match on Friday evening.",
+    "tournament_context": {
+      "available_friday_slots": ["S14", "S15"]
+    }
+  },
+  "output": {
+    "proposed_additions": [],
+    "proposed_changes": [],
+    "ambiguities": [
+      "The organizer did not classify Friday evening as required or preferred."
+    ],
+    "contradictions": [],
+    "clarification_question": "Should Friday evening be a required pin or a preferred slot?",
+    "evidence_refs": [
+      {
+        "evidence_id": "constraints:revision-0",
+        "evidence_kind": "confirmed_constraints",
+        "revision": 0,
+        "consumed_fields": ["current_constraints", "available_friday_slots"]
+      }
+    ]
+  }
+}

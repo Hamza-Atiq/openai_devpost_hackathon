@@ -310,7 +310,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 10 — Specialist agents
 
-- [ ] **TASK-029 — Implement Director, Rules, and Strategy specialists**
+- [x] **TASK-029 — Implement Director, Rules, and Strategy specialists**
   - **Release:** V1 required
   - **Dependencies:** TASK-019, TASK-028
   - **Requirements:** AGENT-001–AGENT-003, AGENT-009–AGENT-011

@@ -1,0 +1,44 @@
+{
+  "input": {
+    "confirmed_constraints": ["minimum_rest: 16h"],
+    "priorities": {
+      "minimize_weather_risk": true,
+      "maximize_fair_rest": true
+    },
+    "available_profiles": ["balanced", "weather-first", "fairness-first"],
+    "validated_metrics": {
+      "balanced": {
+        "weather_risk": 36.0,
+        "group_rest_fairness": 86.0,
+        "preference_satisfaction": 90.0
+      },
+      "weather-first": {
+        "weather_risk": 30.0,
+        "group_rest_fairness": 72.0,
+        "preference_satisfaction": 81.0
+      },
+      "fairness-first": {
+        "weather_risk": 43.0,
+        "group_rest_fairness": 94.0,
+        "preference_satisfaction": 76.0
+      }
+    }
+  },
+  "output": {
+    "profile_requests": ["balanced", "weather-first", "fairness-first"],
+    "comparison_commentary": "Balanced provides the strongest compromise across the organizer's confirmed weather, rest, and preference priorities.",
+    "recommendation": "balanced",
+    "evidence_refs": [
+      {
+        "evidence_id": "comparison:revision-4",
+        "evidence_kind": "validated_schedule_comparison",
+        "revision": 4,
+        "consumed_fields": [
+          "weather_risk",
+          "group_rest_fairness",
+          "preference_satisfaction"
+        ]
+      }
+    ]
+  }
+}

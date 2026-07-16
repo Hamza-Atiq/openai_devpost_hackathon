@@ -45,6 +45,13 @@ class ToolOutcome(DomainModel):
     detail: str | None = Field(default=None, max_length=240)
 
 
+class EvidenceRef(DomainModel):
+    evidence_id: str = Field(min_length=1, max_length=240)
+    evidence_kind: str = Field(min_length=1, max_length=120)
+    revision: int = Field(ge=0)
+    consumed_fields: tuple[str, ...] = Field(min_length=1)
+
+
 class AgentDecision(DomainModel):
     role: AgentRole
     provider: str = Field(min_length=1, max_length=80)

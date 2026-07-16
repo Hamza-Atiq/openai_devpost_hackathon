@@ -1,0 +1,24 @@
+{
+  "input": {
+    "confirmed_constraints": ["minimum_rest: 16h"],
+    "priorities": {
+      "minimize_weather_risk": true,
+      "maximize_fair_rest": true
+    },
+    "available_profiles": ["balanced", "weather-first", "fairness-first"],
+    "validated_metrics": null
+  },
+  "output": {
+    "profile_requests": ["balanced", "weather-first", "fairness-first"],
+    "comparison_commentary": "Weather-first is best.",
+    "recommendation": "weather-first",
+    "evidence_refs": [
+      {
+        "evidence_id": "priorities:revision-2",
+        "evidence_kind": "confirmed_priorities",
+        "revision": 2,
+        "consumed_fields": ["minimize_weather_risk", "maximize_fair_rest"]
+      }
+    ]
+  }
+}
