@@ -1,0 +1,3 @@
+# The repository is polyglot, but this Railway service hosts only FastAPI.
+# Override Node auto-detection so uv installs the locked Python workspace.
+providers = ["python"]
