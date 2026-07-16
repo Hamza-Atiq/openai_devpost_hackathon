@@ -298,7 +298,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Bounded retry, fallback, deterministic mode, half-open recovery, and visible provenance.
   - **Validation:** Fault-injection tests verify transition order and no fabricated response.
 
-- [ ] **TASK-028 — Implement source hierarchy and prompt contract tests**
+- [x] **TASK-028 — Implement source hierarchy and prompt contract tests**
   - **Release:** V1 required
   - **Dependencies:** TASK-026
   - **Requirements:** AGENT-010–AGENT-014, SEC-004–SEC-005
