@@ -1,0 +1,61 @@
+{
+  "scenario_id": "hero-rain-threshold",
+  "scenario_version": "weather-demo/v1",
+  "allocation_minutes": 240,
+  "target_slot": {
+    "id": "01890f3e-0001-7000-8000-000000000100",
+    "venue_id": "01890f3e-0001-7000-8000-000000000030",
+    "starts_at_utc": "2026-09-01T09:00:00Z",
+    "ends_at_utc": "2026-09-01T13:00:00Z",
+    "local_date": "2026-09-01",
+    "availability": "available",
+    "source": "organizer"
+  },
+  "thresholds": {
+    "confirmed": true,
+    "precipitation_probability_gte": 70
+  },
+  "before": {
+    "provider": "deterministic-demo",
+    "provider_model_version": "rain-threshold/v1-before",
+    "latitude": 31.5204,
+    "longitude": 74.3587,
+    "iana_time_zone": "Asia/Karachi",
+    "fetched_at": "2026-08-31T09:00:00Z",
+    "issued_at": "2026-08-31T08:45:00Z",
+    "hours": [
+      {
+        "starts_at_utc": "2026-09-01T09:00:00Z",
+        "precipitation_probability": 45,
+        "precipitation_mm": 0.5,
+        "temperature_c": 30,
+        "apparent_temperature_c": 31,
+        "wind_speed_kmh": 20,
+        "wind_gust_kmh": 30,
+        "weather_code": 3
+      }
+    ]
+  },
+  "after": {
+    "provider": "deterministic-demo",
+    "provider_model_version": "rain-threshold/v1-after",
+    "latitude": 31.5204,
+    "longitude": 74.3587,
+    "iana_time_zone": "Asia/Karachi",
+    "fetched_at": "2026-08-31T10:00:00Z",
+    "issued_at": "2026-08-31T09:45:00Z",
+    "hours": [
+      {
+        "starts_at_utc": "2026-09-01T09:00:00Z",
+        "precipitation_probability": 85,
+        "precipitation_mm": 3,
+        "temperature_c": 30,
+        "apparent_temperature_c": 31,
+        "wind_speed_kmh": 20,
+        "wind_gust_kmh": 30,
+        "weather_code": 61
+      }
+    ]
+  },
+  "expected_digest": "1fd80a9f15b1109d17feb3f519ba871d37eb5b628398cae81b0def65d60932df"
+}

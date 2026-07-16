@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.domain.common import DomainModel, UtcDateTime
 from app.weather.normalize import NormalizedWeatherHour
@@ -45,6 +46,44 @@ class ScheduleWeatherSummary(DomainModel):
     covered_fixture_count: int = Field(ge=0)
     uncovered_fixture_count: int = Field(ge=0)
     coverage_warning: bool
+
+
+class WeatherThresholdCode(StrEnum):
+    PRECIPITATION_PROBABILITY = "precipitation_probability"
+    APPARENT_TEMPERATURE_HIGH = "apparent_temperature_high"
+    APPARENT_TEMPERATURE_LOW = "apparent_temperature_low"
+    WIND_SPEED = "wind_speed"
+    WIND_GUST = "wind_gust"
+    THUNDERSTORM = "thunderstorm"
+
+
+class ConfirmedWeatherThresholds(DomainModel):
+    confirmed: Literal[True]
+    precipitation_probability_gte: float | None = Field(default=None, ge=0, le=100)
+    apparent_temperature_gte: float | None = None
+    apparent_temperature_lte: float | None = None
+    wind_speed_gte: float | None = Field(default=None, ge=0)
+    wind_gust_gte: float | None = Field(default=None, ge=0)
+    thunderstorm_codes: tuple[int, ...] = ()
+
+    @model_validator(mode="after")
+    def require_a_threshold(self) -> ConfirmedWeatherThresholds:
+        configured = (
+            self.precipitation_probability_gte,
+            self.apparent_temperature_gte,
+            self.apparent_temperature_lte,
+            self.wind_speed_gte,
+            self.wind_gust_gte,
+        )
+        if all(value is None for value in configured) and not self.thunderstorm_codes:
+            raise ValueError("at least one confirmed weather threshold is required")
+        return self
+
+
+class WeatherThresholdCrossing(DomainModel):
+    code: WeatherThresholdCode
+    observed_value: float
+    threshold_value: float
 
 
 def _clamp(value: float) -> float:
@@ -186,6 +225,84 @@ def calculate_fixture_risk(
         evaluated_hour_count=len(relevant),
         forecast_fetched_at=forecast_fetched_at,
     )
+
+
+def evaluate_confirmed_thresholds(
+    hours: Sequence[NormalizedWeatherHour],
+    *,
+    fixture_starts_at_utc: datetime,
+    allocation_minutes: int,
+    thresholds: ConfirmedWeatherThresholds,
+    buffer_minutes: int = 30,
+) -> tuple[WeatherThresholdCrossing, ...]:
+    window_start = fixture_starts_at_utc - timedelta(minutes=buffer_minutes)
+    window_end = fixture_starts_at_utc + timedelta(minutes=allocation_minutes + buffer_minutes)
+    relevant = tuple(hour for hour in hours if window_start <= hour.starts_at_utc <= window_end)
+    crossings: list[WeatherThresholdCrossing] = []
+
+    def add_high(
+        code: WeatherThresholdCode,
+        values: Sequence[float | int | None],
+        threshold: float | None,
+    ) -> None:
+        observed = _maximum(values)
+        if threshold is not None and observed is not None and observed >= threshold:
+            crossings.append(
+                WeatherThresholdCrossing(
+                    code=code,
+                    observed_value=observed,
+                    threshold_value=threshold,
+                )
+            )
+
+    add_high(
+        WeatherThresholdCode.PRECIPITATION_PROBABILITY,
+        tuple(hour.precipitation_probability for hour in relevant),
+        thresholds.precipitation_probability_gte,
+    )
+    apparent_values = tuple(
+        hour.apparent_temperature_c
+        if hour.apparent_temperature_c is not None
+        else hour.temperature_c
+        for hour in relevant
+    )
+    add_high(
+        WeatherThresholdCode.APPARENT_TEMPERATURE_HIGH,
+        apparent_values,
+        thresholds.apparent_temperature_gte,
+    )
+    known_apparent = [float(value) for value in apparent_values if value is not None]
+    if thresholds.apparent_temperature_lte is not None and known_apparent:
+        observed_low = min(known_apparent)
+        if observed_low <= thresholds.apparent_temperature_lte:
+            crossings.append(
+                WeatherThresholdCrossing(
+                    code=WeatherThresholdCode.APPARENT_TEMPERATURE_LOW,
+                    observed_value=observed_low,
+                    threshold_value=thresholds.apparent_temperature_lte,
+                )
+            )
+    add_high(
+        WeatherThresholdCode.WIND_SPEED,
+        tuple(hour.wind_speed_kmh for hour in relevant),
+        thresholds.wind_speed_gte,
+    )
+    add_high(
+        WeatherThresholdCode.WIND_GUST,
+        tuple(hour.wind_gust_kmh for hour in relevant),
+        thresholds.wind_gust_gte,
+    )
+    observed_codes = {hour.weather_code for hour in relevant if hour.weather_code is not None}
+    crossed_codes = sorted(observed_codes.intersection(thresholds.thunderstorm_codes))
+    if crossed_codes:
+        crossings.append(
+            WeatherThresholdCrossing(
+                code=WeatherThresholdCode.THUNDERSTORM,
+                observed_value=crossed_codes[-1],
+                threshold_value=crossed_codes[0],
+            )
+        )
+    return tuple(crossings)
 
 
 def summarize_schedule_weather(

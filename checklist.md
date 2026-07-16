@@ -270,7 +270,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Coordinate/time/preset-window risk, null unknown risk, coverage percentage, stale/unavailable states, attribution metadata.
   - **Validation:** Golden hourly vectors and 16-day/21-day coverage cases match spec formulas exactly.
 
-- [ ] **TASK-025 — Implement deterministic demo weather**
+- [x] **TASK-025 — Implement deterministic demo weather**
   - **Release:** V1 required
   - **Dependencies:** TASK-024
   - **Requirements:** WEATHER-002, WEATHER-006–WEATHER-007, AC-006–AC-007, METRIC-005
