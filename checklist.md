@@ -62,7 +62,7 @@ vercel.json pnpm-workspace.yaml README.md AGENTS.md
   - **Expected output:** Server-only keys fail closed when absent; client build exposes only approved public values.
   - **Validation:** Run settings unit tests and scan built frontend assets for key-name/value fixtures; expect no secret leakage.
 
-- [ ] **TASK-003 — Spike GPT-5.6 Sol and Agents SDK compatibility**
+- [x] **TASK-003 — Spike GPT-5.6 Sol and Agents SDK compatibility**
   - **Release:** V1 required, blocking
   - **Dependencies:** TASK-002
   - **Requirements:** AGENT-001–AGENT-014, OBS-001, NFR-002

@@ -5,6 +5,7 @@ description = "CrickOps AI FastAPI service"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi==0.116.1",
+  "openai-agents>=0.18,<0.19",
 ]
 
 [dependency-groups]
