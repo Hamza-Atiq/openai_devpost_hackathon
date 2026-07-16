@@ -26,6 +26,14 @@ An independent review then identified that TASK-001 required formatter configura
 - `uv.lock` was generated with uv 0.6.14 for Python 3.12.
 - Next.js is pinned to maintained 15.5.20 after registry metadata showed the initial 15.4.1 pin was deprecated.
 
+## Cold root sync regression
+
+Merged-state verification found that a default root `uv sync --frozen` installed only the root development tools because the root project did not depend on the `crickops-api` workspace member. Root `uv run pytest` then failed to import FastAPI. `uv tree --package crickops` confirmed that the API dependency graph was disconnected.
+
+A new scaffold-contract assertion first failed because root `project.dependencies` did not contain `crickops-api`. The root project now declares `crickops-api` and maps it through `[tool.uv.sources]` with `workspace = true`; `uv.lock` records that dependency edge.
+
+For cold verification, the ignored worktree `.venv` was removed before running exact `uv sync --frozen` from the repository root. The sync installed FastAPI and its transitive dependencies, and the subsequent root `uv run pytest` passed all six tests.
+
 ## Final validation
 
 All commands were run from the worktree root after the final dependency update. On Windows, the pnpm commands were launched through the equivalent `pnpm.cmd` Corepack shim because PowerShell blocks the generated `pnpm.ps1` shim.
@@ -35,4 +43,4 @@ All commands were run from the worktree root after the final dependency update. 
 | `pnpm lint` | Exit 0; ESLint completed with no findings. |
 | `pnpm test` | Exit 0; 1 Vitest file passed, 1 test passed. |
 | `uv run ruff check .` | Exit 0; `All checks passed!` |
-| `uv run pytest` | Exit 0; 5 tests passed. |
+| `uv run pytest` | Exit 0; 6 tests passed. |

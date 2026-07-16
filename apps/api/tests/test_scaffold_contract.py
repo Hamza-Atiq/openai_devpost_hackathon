@@ -48,6 +48,15 @@ class ScaffoldContractTest(unittest.TestCase):
         self.assertTrue(any(item.startswith("pytest") for item in development_dependencies))
         self.assertTrue(any(item.startswith("ruff") for item in development_dependencies))
 
+    def test_root_installs_api_workspace_dependencies(self) -> None:
+        pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+        self.assertIn("crickops-api", pyproject["project"]["dependencies"])
+        self.assertEqual(
+            pyproject["tool"]["uv"]["sources"]["crickops-api"],
+            {"workspace": True},
+        )
+
     def test_workspace_contains_web_and_api_packages(self) -> None:
         workspace_path = ROOT / "pnpm-workspace.yaml"
         self.assertTrue(workspace_path.is_file(), "pnpm workspace file must exist")
