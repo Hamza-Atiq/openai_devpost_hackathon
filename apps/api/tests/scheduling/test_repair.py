@@ -77,6 +77,7 @@ def test_infeasible_repair_returns_no_draft_placements() -> None:
     tournament = valid_tournament()
     matches = generate_match_graph(tournament)
     baseline = _baseline(tournament, matches)
+    official_snapshot = tuple(placement.model_dump() for placement in baseline)
     eligible = {match.id: frozenset() for match in matches}
 
     result = repair_schedule(
@@ -90,3 +91,4 @@ def test_infeasible_repair_returns_no_draft_placements() -> None:
     assert result.status is RepairStatus.INFEASIBLE
     assert result.placements == ()
     assert result.validation_report is None
+    assert tuple(placement.model_dump() for placement in baseline) == official_snapshot

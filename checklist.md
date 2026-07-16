@@ -234,7 +234,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Sequential passes fix changed-count optimum, then movement/venue optimum, then quality; prior optima never weaken.
   - **Validation:** Golden repair cases verify pass optima, full validation, and 15-second budget behavior.
 
-- [ ] **TASK-021 — Implement schedule differences and infeasible repair**
+- [x] **TASK-021 — Implement schedule differences and infeasible repair**
   - **Release:** V1 required
   - **Dependencies:** TASK-020
   - **Requirements:** FR-017–FR-019, RECOVERY-004–RECOVERY-009, FAIL-009
