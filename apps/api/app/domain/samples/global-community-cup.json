@@ -1,0 +1,45 @@
+{
+  "sample_id": "global-community-cup",
+  "name": "Global Community Cricket Cup",
+  "match_format_preset": "T20",
+  "start_date": "2026-09-01",
+  "end_date": "2026-09-10",
+  "iana_time_zone": "Asia/Kuala_Lumpur",
+  "team_names": [
+    "Azure XI",
+    "Cedar XI",
+    "Ember XI",
+    "Harbour XI",
+    "Jade XI",
+    "Meridian XI",
+    "Silver XI",
+    "Summit XI"
+  ],
+  "venues": [
+    {
+      "display_name": "Riverside Community Ground",
+      "city": "Kuala Lumpur",
+      "country_code": "MY",
+      "latitude": 3.139,
+      "longitude": 101.6869
+    },
+    {
+      "display_name": "Civic Sports Ground",
+      "city": "Kuala Lumpur",
+      "country_code": "MY",
+      "latitude": 3.154,
+      "longitude": 101.703
+    }
+  ],
+  "available_dates": [
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-08"
+  ],
+  "local_start_time": "10:00:00"
+}

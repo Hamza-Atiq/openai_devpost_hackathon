@@ -102,7 +102,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Strict Pydantic models reject unknown fields, invalid cardinalities, unsupported presets, timezone mismatch, and individual-duration overrides.
   - **Validation:** `uv run pytest apps/api/tests/domain -q`; expect all boundary tests pass.
 
-- [ ] **TASK-007 — Create international and Pakistan sample fixtures**
+- [x] **TASK-007 — Create international and Pakistan sample fixtures**
   - **Release:** V1 required
   - **Dependencies:** TASK-006
   - **Requirements:** FR-003, FR-034, UX-008, SCHED-022
