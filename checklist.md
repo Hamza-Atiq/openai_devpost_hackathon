@@ -198,7 +198,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 6 — Schedule profiles and scoring
 
-- [ ] **TASK-017 — Encode optimization configuration v1**
+- [x] **TASK-017 — Encode optimization configuration v1**
   - **Release:** V1 required
   - **Dependencies:** TASK-011
   - **Requirements:** SCHED-010–SCHED-013, WEATHER-012, FAIR-001–FAIR-004

@@ -1,0 +1,54 @@
+{
+  "version": "optimization-config/v1",
+  "rounding": {"display_decimal_places": 1, "solver_scale": 10, "solver_max": 1000},
+  "weather": {
+    "lead_minutes": 30,
+    "lag_minutes": 30,
+    "component_weights": {"rain": 45, "heat": 20, "cold": 10, "wind": 15, "condition": 10},
+    "risk_max_weight": 60,
+    "risk_mean_weight": 40,
+    "coverage_required": ["precipitation_probability", "apparent_temperature", "wind"],
+    "rain_mm_full_risk": 5,
+    "heat_curve_celsius": [[32, 0], [45, 100]],
+    "cold_curve_celsius": [[0, 100], [12, 0]],
+    "sustained_wind_curve_kmh": [[25, 0], [60, 100]],
+    "gust_curve_kmh": [[35, 0], [75, 100]],
+    "condition_scores": {
+      "0-3": 0, "45,48": 20, "51-57": 30, "61,66,80": 50,
+      "63,67,81": 65, "65,82": 80, "71-77,85,86": 70,
+      "95": 90, "96,99": 100
+    },
+    "hard_threshold_suggestions": {
+      "precipitation_probability": 70,
+      "apparent_temperature_max_celsius": 40,
+      "apparent_temperature_min_celsius": 5,
+      "sustained_wind_kmh": 40,
+      "gust_kmh": 60,
+      "thunderstorm_wmo_codes": [95, 96, 99]
+    }
+  },
+  "profiles": {
+    "balanced": {
+      "weights": {"weather_coverage": 25, "rest": 25, "venue_balance": 15, "slot_balance": 10, "organizer_preferences": 20, "audience_timing": 5},
+      "missing_coverage_penalty": 55
+    },
+    "weather-first": {
+      "weights": {"weather_coverage": 50, "rest": 20, "venue_balance": 10, "slot_balance": 5, "organizer_preferences": 10, "audience_timing": 5},
+      "missing_coverage_penalty": 70
+    },
+    "fairness-first": {
+      "weights": {"weather_coverage": 15, "rest": 40, "venue_balance": 20, "slot_balance": 15, "organizer_preferences": 5, "audience_timing": 5},
+      "missing_coverage_penalty": 45
+    }
+  },
+  "custom": {"minimum": 0, "maximum": 100, "all_zero_allowed": false, "default_missing_coverage_penalty": 55},
+  "slot_categories": {
+    "morning": ["06:00", "11:59"],
+    "day": ["12:00", "16:59"],
+    "evening": ["17:00", "22:59"],
+    "off_hours": ["23:00", "05:59"]
+  },
+  "audience": {"prime_slot_satisfaction": 100, "weekend_satisfaction": 70, "standard_satisfaction": 40, "off_hours_satisfaction": 0, "off_hours_penalty": 30},
+  "rest": {"full_margin_minutes": 1440, "mean_weight": 50, "equity_weight": 50},
+  "preference": {"exact_satisfaction": 100, "partial_satisfaction": 50, "violation_satisfaction": 0, "priority_minimum": 1, "priority_maximum": 100}
+}
