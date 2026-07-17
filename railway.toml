@@ -1,8 +1,10 @@
 [build]
-builder = "NIXPACKS"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "uv run uvicorn app.main:app --app-dir apps/api --host 0.0.0.0 --port $PORT"
+preDeployCommand = ["uv run --directory apps/api python -m app.deployment.runtime migrate"]
+startCommand = "uv run --directory apps/api python -m app.deployment.runtime serve"
 healthcheckPath = "/health/live"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"

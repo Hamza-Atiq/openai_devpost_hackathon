@@ -6,8 +6,7 @@ test("judge can review the complete hero journey within three minutes", async ({
 
   await page.goto("/");
   await expect(page.getByText("CrickOps AI", { exact: true }).first()).toBeVisible();
-
-  await page.goto("/workspace/setup");
+  await page.getByRole("button", { name: "Load sample" }).first().click();
   await expect(page.getByRole("heading", { name: /confirm the playing field/i })).toBeVisible();
 
   await page.goto("/workspace/options");

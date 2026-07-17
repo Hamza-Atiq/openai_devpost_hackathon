@@ -540,7 +540,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Repeated genuine GPT-5.6, solver, validator, six-role, rain-repair flow fits three minutes; directional 10/30/15 targets measured.
   - **Validation:** Minimum 20 consecutive deployed-like runs with success/latency report; investigate any failure before gate.
 
-- [ ] **TASK-054 — Run complete regression and requirement evidence matrix**
+- [x] **TASK-054 — Run complete regression and requirement evidence matrix**
   - **Release:** V1 required
   - **Dependencies:** TASK-053
   - **Requirements:** All V1 PRD identifiers
