@@ -61,6 +61,65 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .blank-card { background: transparent; border-style: dashed; }
 .privacy-note { margin-top: 1.2rem; color: var(--muted); font-size: .8rem; }
 .error-banner { padding: 1rem; border-left: 4px solid var(--alert); background: #fff5e8; }
+
+/* TASK-041 · the comparison reads like a cricket analyst's score sheet, not a card carousel. */
+.comparison-studio { max-width: 1280px; margin: 0 auto; }
+.comparison-head { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 1.4rem; }
+.comparison-head h1 { max-width: 780px; margin: 0; font-size: clamp(2.35rem, 4vw, 4.5rem); line-height: .94; text-transform: uppercase; }
+.comparison-head > div > p:last-child { max-width: 680px; color: var(--muted); }
+.comparison-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; justify-content: flex-end; }
+.metric-version { padding: .55rem .72rem; border: 1px solid var(--line); color: var(--muted); font: 700 .7rem/1 "Arial Narrow", sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.identical-note { display: grid; grid-template-columns: auto 1fr; gap: .45rem 1.2rem; margin: 1rem 0; padding: 1rem 1.15rem; border-left: 4px solid var(--weather); background: #eaf4f7; }
+.identical-note strong { font-family: "Arial Narrow", sans-serif; text-transform: uppercase; }
+.identical-note span { color: #365c68; }
+.comparison-grid { --option-count: 3; display: grid; grid-template-columns: 190px repeat(var(--option-count), minmax(220px, 1fr)); border: 1px solid #aebdac; background: var(--paper); overflow-x: auto; box-shadow: 16px 16px 0 rgba(31,107,69,.07); }
+.metric-spine, .profile-column { display: grid; grid-template-rows: 150px repeat(6, 84px) minmax(148px, auto) 68px; }
+.metric-spine { background: #e9eee6; border-right: 1px solid var(--line); }
+.metric-spine > span { display: flex; flex-direction: column; justify-content: center; padding: .8rem 1rem; border-bottom: 1px solid var(--line); color: var(--pitch-ink); font-size: .76rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.metric-spine small { margin-top: .25rem; color: var(--muted); font-size: .63rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.profile-column { min-width: 220px; border-right: 1px solid var(--line); }
+.profile-column:last-child { border-right: 0; }
+.profile-column > header { position: relative; padding: 1.25rem; border-top: 5px solid var(--boundary); border-bottom: 1px solid var(--line); }
+.profile-weather-first > header { border-top-color: var(--weather); }
+.profile-fairness-first > header { border-top-color: var(--crease); }
+.profile-custom > header { border-top-color: var(--alert); }
+.profile-column > header p { margin: 0 0 .3rem; color: var(--muted); font-size: .65rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.profile-column h2 { margin: 0 0 .8rem; font-size: 1.7rem; }
+.validation-pass, .validation-fail { display: flex; align-items: center; gap: .42rem; font-size: .7rem; font-weight: 750; }
+.validation-pass { color: var(--boundary); }
+.validation-fail { color: #9d3c2d; }
+.validation-pass b, .validation-fail b { display: grid; place-items: center; width: 1.15rem; height: 1.15rem; border: 1px solid currentColor; border-radius: 50%; }
+.profile-column dl { display: contents; margin: 0; }
+.profile-column dl > div { position: relative; display: grid; align-content: center; gap: .42rem; padding: .85rem 1.15rem; border-bottom: 1px solid var(--line); }
+.profile-column dt { display: none; }
+.profile-column dd { margin: 0; font: 800 1.6rem/1 "Arial Narrow", sans-serif; }
+.metric-track { display: block; height: 4px; background: #dde5da; overflow: hidden; }
+.metric-track i { display: block; height: 100%; background: var(--boundary); }
+.profile-weather-first .metric-track i { background: var(--weather); }
+.profile-fairness-first .metric-track i { background: #86a13b; }
+.violation-list { padding: 1rem 1.15rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .76rem; line-height: 1.45; }
+.violation-list h3 { margin: 0 0 .55rem; color: var(--pitch-ink); font-size: .8rem; }
+.violation-list ul { margin: 0; padding-left: 1rem; }
+.profile-select { margin: .75rem 1rem; border: 1px solid var(--boundary); background: transparent; color: var(--boundary); font-weight: 800; cursor: pointer; }
+.profile-select[aria-pressed="true"] { background: var(--boundary); color: white; }
+.profile-select:disabled { border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+.comparison-caveat { margin: 1.25rem 0; color: var(--muted); font-size: .78rem; }
+.custom-priorities { display: flex; align-items: end; gap: 1.2rem; padding: 1.35rem; border: 1px solid var(--line); background: var(--paper); }
+.custom-priorities fieldset { flex: 1; min-width: 0; padding: 0; border: 0; }
+.custom-priorities legend { font: 800 1.35rem/1 "Arial Narrow", sans-serif; text-transform: uppercase; }
+.custom-priorities fieldset > p { color: var(--muted); font-size: .8rem; }
+.priority-control-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem 1.4rem; }
+.priority-control-grid label { display: grid; gap: .35rem; font-size: .72rem; font-weight: 700; }
+.priority-control-grid label span { display: grid; grid-template-columns: 1fr 2rem; align-items: center; gap: .45rem; }
+.priority-control-grid input { width: 100%; accent-color: var(--boundary); }
+.priority-control-grid output { font-family: "Arial Narrow", sans-serif; font-weight: 800; }
+@media (max-width: 900px) {
+  .comparison-head, .custom-priorities { align-items: stretch; flex-direction: column; }
+  .comparison-actions { justify-content: flex-start; }
+  .comparison-grid { grid-template-columns: 150px repeat(var(--option-count), minmax(210px, 1fr)); }
+  .priority-control-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 620px) { .priority-control-grid { grid-template-columns: 1fr; } }
 .topbar { position: sticky; top: 0; z-index: 5; background: rgba(242,245,239,.95); }
 .topbar nav { display: flex; gap: 1.3rem; }
 .topbar nav a { color: var(--muted); text-decoration: none; font-size: .86rem; }

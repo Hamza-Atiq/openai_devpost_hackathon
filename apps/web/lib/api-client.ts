@@ -24,6 +24,37 @@ export type ConfirmSetupInput = {
 
 export type SetupPrecheck = { ready: boolean; violations: string[] };
 
+export type CustomPriorities = {
+  weather_coverage: number;
+  rest: number;
+  venue_balance: number;
+  slot_balance: number;
+  organizer_preferences: number;
+  audience_timing: number;
+};
+
+export type ScheduleOptionResponse = {
+  draft_id: string;
+  profile: "balanced" | "weather-first" | "fairness-first" | "custom";
+  validation_valid: boolean;
+  metrics: {
+    weather_risk: number | null;
+    weather_coverage: number;
+    group_rest_fairness: number;
+    venue_balance: number;
+    slot_balance: number;
+    preference_satisfaction: number;
+    soft_violations: string[];
+  };
+};
+
+export type ScheduleComparisonResponse = {
+  run_id: string;
+  metric_version: string;
+  options: ScheduleOptionResponse[];
+  identical_solution_groups: string[][];
+};
+
 export class ApiProblemError extends Error {
   readonly code: string;
   readonly status: number;
@@ -63,13 +94,43 @@ export class CrickOpsApiClient {
     return this.request<SetupPrecheck>("/api/v1/tournament/precheck", {});
   }
 
-  private async request<T = unknown>(path: string, body: object): Promise<T> {
+  async generateScheduleOptions(
+    customPriorities?: CustomPriorities,
+  ): Promise<ScheduleComparisonResponse> {
+    const profiles = ["balanced", "weather_first", "fairness_first"];
+    if (customPriorities) profiles.push("custom");
+    const accepted = await this.request<{ run_id: string }>(
+      "/api/v1/schedule-runs",
+      { profiles, custom_priorities: customPriorities ?? null },
+      { "Idempotency-Key": crypto.randomUUID() },
+    );
+    return this.get<ScheduleComparisonResponse>(
+      `/api/v1/schedule-comparisons?run_id=${encodeURIComponent(accepted.run_id)}`,
+    );
+  }
+
+  private async request<T = unknown>(
+    path: string,
+    body: object,
+    headers: Record<string, string> = {},
+  ): Promise<T> {
     const response = await this.fetcher(path, {
       method: "POST",
       credentials: "same-origin",
       cache: "no-store",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify(body),
+    });
+    const payload: unknown = await response.json();
+    if (!response.ok) throw new ApiProblemError(payload as ProblemDetails);
+    return payload as T;
+  }
+
+  private async get<T>(path: string): Promise<T> {
+    const response = await this.fetcher(path, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
     });
     const payload: unknown = await response.json();
     if (!response.ok) throw new ApiProblemError(payload as ProblemDetails);

@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.api.problems import APIProblem
 from app.api.routes import require_workspace
@@ -25,9 +25,26 @@ from app.scheduling.profiles import ComponentPenalties, generate_profile_options
 from app.scheduling.repair import RepairStatus, repair_schedule
 
 
+class CustomPrioritiesInput(DomainModel):
+    weather_coverage: int = Field(ge=0, le=100)
+    rest: int = Field(ge=0, le=100)
+    venue_balance: int = Field(ge=0, le=100)
+    slot_balance: int = Field(ge=0, le=100)
+    organizer_preferences: int = Field(ge=0, le=100)
+    audience_timing: int = Field(ge=0, le=100)
+
+    @model_validator(mode="after")
+    def reject_all_zero(self) -> CustomPrioritiesInput:
+        values = self.model_dump(exclude={"schema_version"}).values()
+        if sum(values) == 0:
+            raise ValueError("custom priorities cannot all be zero")
+        return self
+
+
 class ScheduleRunInput(DomainModel):
     profiles: tuple[str, ...] = Field(min_length=1, max_length=4)
     expected_revision: int | None = Field(default=None, ge=0)
+    custom_priorities: CustomPrioritiesInput | None = None
 
 
 class ApprovalInput(DomainModel):
@@ -226,6 +243,21 @@ def build_schedule_router() -> APIRouter:
                 title="Three profiles required",
                 detail="Balanced, Weather-first, and Fairness-first must be requested together.",
             )
+        custom_requested = "custom" in requested
+        if custom_requested and body.custom_priorities is None:
+            raise APIProblem(
+                status=422,
+                code="custom_priorities_required",
+                title="Custom priorities required",
+                detail="Set Custom priority weights before generating a custom schedule.",
+            )
+        if body.custom_priorities is not None and not custom_requested:
+            raise APIProblem(
+                status=422,
+                code="custom_profile_required",
+                title="Custom profile required",
+                detail="Request the Custom profile when custom priorities are supplied.",
+            )
         matches, eligibility = _eligibility(workspace)
         batch = generate_profile_options(
             workspace.tournament,
@@ -234,6 +266,11 @@ def build_schedule_router() -> APIRouter:
             generated_at=datetime.now(UTC),
             metric_evaluator=_metric_evaluator(workspace, matches),
             component_penalties=_component_penalties(workspace, matches, eligibility),
+            custom_priorities=(
+                body.custom_priorities.model_dump(exclude={"schema_version"})
+                if body.custom_priorities is not None
+                else None
+            ),
         )
         if batch.failures:
             raise APIProblem(

@@ -422,7 +422,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 14 — Schedule comparison
 
-- [ ] **TASK-041 — Build profile controls and comparison panels**
+- [x] **TASK-041 — Build profile controls and comparison panels**
   - **Release:** V1 required
   - **Dependencies:** TASK-019, TASK-040
   - **Requirements:** FR-009–FR-013, UX-003, AC-002

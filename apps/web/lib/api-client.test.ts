@@ -81,4 +81,46 @@ describe("CrickOpsApiClient", () => {
       expect.objectContaining({ method: "POST", credentials: "same-origin" }),
     );
   });
+
+  it("generates Custom only on request and retrieves the validated comparison", async () => {
+    vi.stubGlobal("crypto", { randomUUID: () => "run-key-1" });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ run_id: "run-1", status: "accepted" }), {
+          status: 202,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ run_id: "run-1", metric_version: "schedule-metrics/v1", options: [], identical_solution_groups: [] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    await new CrickOpsApiClient(fetcher).generateScheduleOptions({
+      weather_coverage: 45,
+      rest: 30,
+      venue_balance: 10,
+      slot_balance: 5,
+      organizer_preferences: 5,
+      audience_timing: 5,
+    });
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/schedule-runs",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"custom"'),
+        headers: expect.objectContaining({ "Idempotency-Key": "run-key-1" }),
+      }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/schedule-comparisons?run_id=run-1",
+      expect.objectContaining({ method: "GET", credentials: "same-origin" }),
+    );
+  });
 });
