@@ -468,7 +468,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Rain threshold event and manual venue outage use one unavailable-slot workflow against official baseline.
   - **Validation:** E2E tests for both disruption types; unsupported events remain unavailable.
 
-- [ ] **TASK-046 — Build repair difference and recovery explanation UI**
+- [x] **TASK-046 — Build repair difference and recovery explanation UI**
   - **Release:** V1 required
   - **Dependencies:** TASK-031, TASK-045
   - **Requirements:** FR-017–FR-019, RECOVERY-003–RECOVERY-008, UX-005
