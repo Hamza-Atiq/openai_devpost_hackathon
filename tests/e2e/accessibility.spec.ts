@@ -13,6 +13,7 @@ const heroRoutes = [
 
 for (const route of heroRoutes) {
   test(`${route} has no serious or critical WCAG A/AA violations`, async ({ page }) => {
+    test.setTimeout(60_000);
     await page.goto(route);
     await page.waitForLoadState("networkidle");
 

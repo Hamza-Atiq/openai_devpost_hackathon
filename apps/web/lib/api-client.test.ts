@@ -5,6 +5,23 @@ import { CrickOpsApiClient } from "./api-client";
 describe("CrickOpsApiClient", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("binds the browser fetch receiver when no test fetcher is injected", async () => {
+    const browserFetch = vi.fn(function (this: typeof globalThis) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return Promise.resolve(
+        new Response(JSON.stringify({ items: [], next_cursor: null, has_more: false }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", browserFetch);
+
+    await new CrickOpsApiClient().getAuditEvents();
+
+    expect(browserFetch).toHaveBeenCalledOnce();
+  });
+
   it("creates a sample workspace with private same-origin credentials", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(

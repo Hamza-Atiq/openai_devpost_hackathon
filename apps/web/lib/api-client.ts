@@ -117,7 +117,11 @@ export class ApiProblemError extends Error {
 }
 
 export class CrickOpsApiClient {
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  private readonly fetcher: typeof fetch;
+
+  constructor(fetcher?: typeof fetch) {
+    this.fetcher = fetcher ?? globalThis.fetch.bind(globalThis);
+  }
 
   async createWorkspace(sampleId?: string): Promise<WorkspaceView> {
     const response = await this.fetcher("/api/v1/workspaces", {
