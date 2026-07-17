@@ -7,7 +7,7 @@ from agents import Agent
 from pydantic import Field
 
 from app.agents.instructions import build_agent_instructions
-from app.agents.schemas import AgentRole, EvidenceRef
+from app.agents.schemas import AgentRole, AgentScalar, EvidenceRef
 from app.agents.specialist_tools import require_allowed_tools
 from app.domain.common import DomainModel
 
@@ -21,7 +21,7 @@ class ConstraintInterpretationInput(DomainModel):
 class ProposedConstraint(DomainModel):
     key: str = Field(min_length=1, max_length=120)
     classification: Literal["required", "preferred"]
-    value: object
+    value: AgentScalar
     source_text: str = Field(min_length=1, max_length=500)
 
 

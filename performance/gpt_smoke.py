@@ -4,12 +4,14 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 API_ROOT = ROOT / "apps" / "api"
@@ -17,7 +19,6 @@ if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
 from agents import RunConfig, Runner  # noqa: E402
-
 from app.agents.director import DirectorTurnOutput, create_director_agent  # noqa: E402
 from app.agents.fairness import (  # noqa: E402
     FairnessAuditInput,
@@ -27,8 +28,8 @@ from app.agents.fairness import (  # noqa: E402
 )
 from app.agents.recovery import (  # noqa: E402
     RecoveryInput,
-    RecoveryOutput,
     RecoveryOptionEvidence,
+    RecoveryOutput,
     create_recovery_agent,
     validate_recovery_output,
 )
@@ -56,6 +57,7 @@ from app.agents.weather import (  # noqa: E402
 from app.domain.schedules import ScheduleDiff, ScheduleProfile  # noqa: E402
 
 MODEL = "gpt-5.6"
+_SECRET = re.compile(r"\bsk-[A-Za-z0-9_-]+\b")
 ROLE_ORDER = (
     "rules_constraint",
     "scheduling_strategy",
@@ -151,7 +153,8 @@ def _calls() -> tuple[SmokeCall, ...]:
             "rules_constraint",
             create_rules_agent(model=MODEL),
             _json_prompt(
-                "Interpret the preference as one preferred addition, with no ambiguity or contradiction.",
+                "Interpret the preference as one preferred addition, with no ambiguity "
+                "or contradiction.",
                 {"input": rules_input.model_dump(mode="json"), "evidence_ref": evidence_ref},
             ),
             ConstraintInterpretationOutput,
@@ -161,7 +164,8 @@ def _calls() -> tuple[SmokeCall, ...]:
             "scheduling_strategy",
             create_strategy_agent(model=MODEL),
             _json_prompt(
-                "Request all three available profiles. Do not recommend or compare because validated metrics are absent.",
+                "Request all three available profiles. Do not recommend or compare "
+                "because validated metrics are absent.",
                 {"input": strategy_input.model_dump(mode="json"), "evidence_ref": evidence_ref},
             ),
             StrategyOutput,
@@ -171,7 +175,8 @@ def _calls() -> tuple[SmokeCall, ...]:
             "weather_intelligence",
             create_weather_agent(model=MODEL),
             _json_prompt(
-                "Identify G07 as high risk, preserve the required disclaimer, and make no unsupported claim.",
+                "Identify G07 as high risk, preserve the required disclaimer, and make "
+                "no unsupported claim.",
                 {"input": weather_input.model_dump(mode="json"), "evidence_ref": evidence_ref},
             ),
             WeatherAnalysisOutput,
@@ -181,7 +186,8 @@ def _calls() -> tuple[SmokeCall, ...]:
             "fairness_logistics",
             create_fairness_agent(model=MODEL),
             _json_prompt(
-                "Audit only the supplied valid metrics. Include group and potential-knockout rest summaries and the required fairness boundary.",
+                "Audit only the supplied valid metrics. Include group and potential-knockout "
+                "rest summaries and the required fairness boundary.",
                 {"input": fairness_input.model_dump(mode="json"), "evidence_ref": evidence_ref},
             ),
             FairnessAuditOutput,
@@ -191,8 +197,13 @@ def _calls() -> tuple[SmokeCall, ...]:
             "disruption_recovery",
             create_recovery_agent(model=MODEL),
             _json_prompt(
-                "Explain the validated repair exactly: one preserved, one moved, zero added/removed. Recommend its draft and cite evidence_kind validated_schedule_diff.",
-                {"input": recovery_input.model_dump(mode="json"), "diff": diff.model_dump(mode="json")},
+                "Explain the validated repair exactly: one preserved, one moved, zero "
+                "added/removed. Recommend its draft and cite evidence_kind "
+                "validated_schedule_diff.",
+                {
+                    "input": recovery_input.model_dump(mode="json"),
+                    "diff": diff.model_dump(mode="json"),
+                },
             ),
             RecoveryOutput,
             lambda output: validate_recovery_output(recovery_input, output),
@@ -201,7 +212,8 @@ def _calls() -> tuple[SmokeCall, ...]:
             "tournament_director",
             create_director_agent(model=MODEL),
             _json_prompt(
-                "Give a concise organizer-facing recovery summary and expose review_repair as an explicit UI action. Do not claim external publication.",
+                "Give a concise organizer-facing recovery summary and expose review_repair "
+                "as an explicit UI action. Do not claim external publication.",
                 {
                     "official_version": 1,
                     "repair_draft": draft_id,
@@ -226,12 +238,21 @@ async def _run_live(timeout_seconds: float) -> dict[str, Any]:
     validated_roles: list[str] = []
     run_config = RunConfig(trace_include_sensitive_data=False)
     for call in _calls():
-        result = await asyncio.wait_for(
-            Runner.run(call.agent, call.prompt, max_turns=2, run_config=run_config),
-            timeout=timeout_seconds,
-        )
-        output = result.final_output_as(call.output_type, raise_if_incorrect_type=True)
-        call.validate(output)
+        try:
+            result = await asyncio.wait_for(
+                Runner.run(call.agent, call.prompt, max_turns=2, run_config=run_config),
+                timeout=timeout_seconds,
+            )
+            output = result.final_output_as(
+                call.output_type, raise_if_incorrect_type=True
+            )
+            call.validate(output)
+        except Exception as exc:
+            return _failed_report(
+                exc,
+                validated_roles=validated_roles,
+                failing_role=call.role,
+            )
         validated_roles.append(call.role)
     return {
         "schema_version": "gpt-smoke/v1",
@@ -242,6 +263,51 @@ async def _run_live(timeout_seconds: float) -> dict[str, Any]:
         "fabricated_response": False,
         "duration_seconds": round(perf_counter() - started, 3),
         "validation": "shared Pydantic schemas plus deterministic role validators",
+    }
+
+
+def _safe_error_details(exc: Exception) -> dict[str, Any]:
+    message = str(getattr(exc, "message", None) or exc)[:500]
+    details: dict[str, Any] = {
+        "error_type": type(exc).__name__,
+        "error_message": _SECRET.sub("[REDACTED]", message),
+    }
+    for source, target in (
+        ("status_code", "error_status"),
+        ("code", "error_code"),
+        ("param", "error_param"),
+    ):
+        value = getattr(exc, source, None)
+        if value is not None:
+            details[target] = value
+    return {
+        key: details[key]
+        for key in (
+            "error_type",
+            "error_status",
+            "error_code",
+            "error_param",
+            "error_message",
+        )
+        if key in details
+    }
+
+
+def _failed_report(
+    exc: Exception,
+    *,
+    validated_roles: list[str],
+    failing_role: str,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "gpt-smoke/v1",
+        "status": "failed",
+        "model": MODEL,
+        "genuine_model_calls": len(validated_roles),
+        "validated_roles": list(validated_roles),
+        "failing_role": failing_role,
+        "fabricated_response": False,
+        **_safe_error_details(exc),
     }
 
 
@@ -258,15 +324,7 @@ def run_gpt_smoke(*, timeout_seconds: float = 45.0) -> dict[str, Any]:
     try:
         return asyncio.run(_run_live(timeout_seconds))
     except Exception as exc:  # safe evidence; prompts and secrets are deliberately excluded
-        return {
-            "schema_version": "gpt-smoke/v1",
-            "status": "failed",
-            "model": MODEL,
-            "genuine_model_calls": 0,
-            "validated_roles": [],
-            "fabricated_response": False,
-            "error_type": type(exc).__name__,
-        }
+        return _failed_report(exc, validated_roles=[], failing_role="setup")
 
 
 def main() -> int:

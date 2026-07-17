@@ -532,7 +532,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** No critical accessibility issue or cross-workspace/security escape in hero flow.
   - **Validation:** Run full security/accessibility jobs; archive reports in `docs/evidence/`.
 
-- [ ] **TASK-053 — Repeat hero flow and performance tests**
+- [x] **TASK-053 — Repeat hero flow and performance tests**
   - **Release:** V1 required
   - **Dependencies:** TASK-051, TASK-052
   - **Requirements:** NFR-002–NFR-004, NFR-008, METRIC-009–METRIC-012

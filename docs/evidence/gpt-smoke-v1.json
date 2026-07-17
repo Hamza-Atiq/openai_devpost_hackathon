@@ -1,8 +1,17 @@
 {
   "schema_version": "gpt-smoke/v1",
-  "status": "missing_api_key",
+  "status": "passed",
   "model": "gpt-5.6",
-  "genuine_model_calls": 0,
-  "validated_roles": [],
-  "fabricated_response": false
+  "genuine_model_calls": 6,
+  "validated_roles": [
+    "rules_constraint",
+    "scheduling_strategy",
+    "weather_intelligence",
+    "fairness_logistics",
+    "disruption_recovery",
+    "tournament_director"
+  ],
+  "fabricated_response": false,
+  "duration_seconds": 28.28,
+  "validation": "shared Pydantic schemas plus deterministic role validators"
 }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from enum import StrEnum
 
 from agents import Agent
@@ -24,6 +24,18 @@ class RecoveryOptionEvidence(DomainModel):
     diff: ScheduleDiff
 
 
+class RecoveryMetricDeltas(DomainModel):
+    weather_risk: float | None = None
+    weather_coverage: float | None = None
+    missing_coverage_penalty: float | None = None
+    group_rest_fairness: float | None = None
+    potential_knockout_rest: float | None = None
+    venue_balance: float | None = None
+    slot_balance: float | None = None
+    preference_satisfaction: float | None = None
+    change_cost: float | None = None
+
+
 class RecoveryInput(DomainModel):
     official_version_id: UUID7
     disruption_kind: DisruptionKind
@@ -38,7 +50,7 @@ class RecoveryOptionExplanation(DomainModel):
     moved_count: int = Field(ge=0)
     added_count: int = Field(ge=0)
     removed_count: int = Field(ge=0)
-    metric_deltas: Mapping[str, float]
+    metric_deltas: RecoveryMetricDeltas
     explanation: str = Field(min_length=1, max_length=1200)
 
 
@@ -59,7 +71,10 @@ def _matches_diff(
         and explanation.moved_count == len(diff.moved)
         and explanation.added_count == len(diff.added)
         and explanation.removed_count == len(diff.removed)
-        and dict(explanation.metric_deltas) == dict(diff.metric_deltas)
+        and explanation.metric_deltas.model_dump(
+            exclude={"schema_version"}, exclude_none=True
+        )
+        == dict(diff.metric_deltas)
     )
 
 

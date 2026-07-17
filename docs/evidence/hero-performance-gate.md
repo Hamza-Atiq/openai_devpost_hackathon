@@ -16,6 +16,8 @@ The 10/30/15-second interpretation/generation/repair values are directional goal
 
 `python -m performance.gpt_smoke` runs one schema-constrained, deterministic-validator-protected call for each of the six roles. It never fabricates a normal response when the API key is absent or a provider call fails. The generated `gpt-smoke-v1.json` report is the evidence source for the live-model portion of this gate.
 
+The production-key run passed on 2026-07-17: 6/6 genuine GPT-5.6 calls completed in 35.322 seconds. Rules, Strategy, Weather, Fairness, Recovery, and Director outputs all matched strict application schemas and passed the same deterministic role validators used by the product.
+
 ## Browser evidence
 
 `tests/e2e/hero.spec.ts` traverses the public judge journey, checks the three validated profiles, official schedule, disruption, minimum-change repair, approval control, and audit timeline, and enforces the three-minute ceiling. It complements the API harness; it does not substitute static or cached fixtures for solver evidence.

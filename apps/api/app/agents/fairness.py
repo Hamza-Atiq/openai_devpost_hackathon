@@ -30,13 +30,25 @@ class FairnessOutlier(DomainModel):
     reason: str = Field(min_length=1, max_length=500)
 
 
+class FairnessMetricClaims(DomainModel):
+    weather_risk: float | None = None
+    weather_coverage: float | None = None
+    missing_coverage_penalty: float | None = None
+    group_rest_fairness: float | None = None
+    potential_knockout_rest: float | None = None
+    venue_balance: float | None = None
+    slot_balance: float | None = None
+    preference_satisfaction: float | None = None
+    change_cost: float | None = None
+
+
 class FairnessAuditOutput(DomainModel):
     findings: tuple[str, ...]
     outliers: tuple[FairnessOutlier, ...] = ()
     tradeoffs: tuple[str, ...] = ()
     group_rest_summary: str = Field(min_length=1, max_length=1000)
     potential_knockout_rest_summary: str = Field(min_length=1, max_length=1000)
-    metric_claims: Mapping[str, float]
+    metric_claims: FairnessMetricClaims
     evidence_refs: tuple[EvidenceRef, ...] = Field(min_length=1)
     overall_summary: str = Field(min_length=1, max_length=1200)
     fairness_boundary: Literal[
@@ -58,9 +70,12 @@ def validate_fairness_audit(
         raise ValueError("fairness explanation requires an independently validated schedule")
     if turn_input.metric_version != "schedule-metrics/v1":
         raise ValueError("fairness metric version mismatch")
+    metric_claims = output.metric_claims.model_dump(
+        exclude={"schema_version"}, exclude_none=True
+    )
     if any(
         name not in turn_input.metrics or turn_input.metrics[name] != value
-        for name, value in output.metric_claims.items()
+        for name, value in metric_claims.items()
     ):
         raise ValueError("fairness output contains a fabricated fairness metric")
     if any(outlier.team_id not in turn_input.team_breakdown for outlier in output.outliers):

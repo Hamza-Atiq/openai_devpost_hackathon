@@ -7,7 +7,7 @@ from agents import Agent
 from pydantic import Field
 
 from app.agents.instructions import build_agent_instructions
-from app.agents.schemas import AgentMode, AgentRole, EvidenceRef
+from app.agents.schemas import AgentMode, AgentRole, AgentScalar, EvidenceRef
 from app.agents.specialist_tools import require_allowed_tools
 from app.domain.common import DomainModel
 
@@ -22,7 +22,7 @@ class DirectorTurnInput(DomainModel):
 
 class ProposedStateChange(DomainModel):
     field: str = Field(min_length=1, max_length=120)
-    proposed_value: object
+    proposed_value: AgentScalar
     requires_confirmation: bool = True
 
 

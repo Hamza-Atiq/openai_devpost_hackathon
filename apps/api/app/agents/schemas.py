@@ -7,6 +7,8 @@ from pydantic import Field
 
 from app.domain.common import DomainModel, UtcDateTime
 
+AgentScalar = str | int | float | bool
+
 
 class AgentMode(StrEnum):
     GPT_5_6 = "gpt-5.6"
