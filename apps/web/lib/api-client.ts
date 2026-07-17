@@ -165,6 +165,17 @@ export class CrickOpsApiClient {
     return confirmed.revision;
   }
 
+  async declareAndRepairDisruption(
+    type: "rain" | "venue_unavailability",
+    unavailableSlotIds: string[],
+  ): Promise<{ disruption_id: string; draft_id: string; status: string }> {
+    const disruption = await this.request<{ disruption_id: string }>("/api/v1/disruptions", {
+      type,
+      unavailable_slot_ids: unavailableSlotIds,
+    });
+    return this.request(`/api/v1/disruptions/${encodeURIComponent(disruption.disruption_id)}/repair-runs`, {});
+  }
+
   private async request<T = unknown>(
     path: string,
     body: object,

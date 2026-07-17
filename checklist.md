@@ -460,7 +460,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 16 — Disruption and recovery flow
 
-- [ ] **TASK-045 — Build rain and venue-unavailability declaration flow**
+- [x] **TASK-045 — Build rain and venue-unavailability declaration flow**
   - **Release:** V1 required
   - **Dependencies:** TASK-021, TASK-044
   - **Requirements:** FR-016, RECOVERY-001–RECOVERY-002, RECOVERY-009

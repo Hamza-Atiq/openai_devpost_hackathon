@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import app.api.schedules as schedule_routes
+import pytest
 from app.main import create_app
 from fastapi.testclient import TestClient
 
@@ -186,7 +187,10 @@ def test_disruption_rejects_workspace_without_official_baseline() -> None:
     assert response.json()["code"] == "official_schedule_required"
 
 
-def test_rain_disruption_produces_validated_minimum_change_diff() -> None:
+@pytest.mark.parametrize("disruption_type", ["rain", "venue_unavailability"])
+def test_supported_disruption_produces_validated_minimum_change_diff(
+    disruption_type: str,
+) -> None:
     client = client_with_sample()
     run_id = client.post(
         "/api/v1/schedule-runs",
@@ -203,7 +207,7 @@ def test_rain_disruption_produces_validated_minimum_change_diff() -> None:
     disruption = client.post(
         "/api/v1/disruptions",
         json={
-            "type": "rain",
+            "type": disruption_type,
             "unavailable_slot_ids": [draft["placements"][-1]["slot_id"]],
         },
     ).json()
