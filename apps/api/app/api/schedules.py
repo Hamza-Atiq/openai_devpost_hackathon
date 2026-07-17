@@ -413,7 +413,12 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
         if replay is not None:
             return replay
         option = workspace.drafts.get(draft_id)
-        if option is None or not option.validation_report.valid or not body.confirmation:
+        if (
+            option is None
+            or draft_id in workspace.rejected_drafts
+            or not option.validation_report.valid
+            or not body.confirmation
+        ):
             raise APIProblem(
                 status=409,
                 code="draft_not_approvable",
@@ -429,6 +434,20 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 title="Schedule draft is stale",
                 detail="Regenerate this option from the latest confirmed tournament revision.",
             )
+        repair_diff = workspace.schedule_diffs.get(draft_id)
+        if repair_diff is not None:
+            latest_version_id = (
+                str(workspace.official_versions[-1]["version_id"])
+                if workspace.official_versions
+                else None
+            )
+            if str(repair_diff["baseline_version_id"]) != latest_version_id:
+                raise APIProblem(
+                    status=409,
+                    code="stale_official_baseline",
+                    title="Official schedule changed",
+                    detail="Generate a new repair from the latest official schedule version.",
+                )
         version = {
             "version_id": str(_uuid7()),
             "version_number": len(workspace.official_versions) + 1,
@@ -467,7 +486,57 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 title="Schedule draft not found",
                 detail="The draft does not belong to this workspace.",
             )
+        workspace.rejected_drafts.add(draft_id)
         return Response(status_code=204)
+
+    @router.post("/schedule-versions/{version_id}/restore", status_code=201)
+    def restore_schedule_version(
+        version_id: str,
+        body: ApprovalInput,
+        workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+    ):
+        replay = workspace.idempotency.get(f"restore:{idempotency_key}")
+        if replay is not None:
+            return replay
+        source = next(
+            (
+                version
+                for version in workspace.official_versions
+                if str(version["version_id"]) == version_id
+            ),
+            None,
+        )
+        if source is None:
+            raise APIProblem(
+                status=404,
+                code="schedule_version_not_found",
+                title="Schedule version not found",
+                detail="The requested official version does not belong to this workspace.",
+            )
+        if not body.confirmation:
+            raise APIProblem(
+                status=422,
+                code="confirmation_required",
+                title="Confirmation required",
+                detail="Explicitly confirm restoration of the earlier official schedule.",
+            )
+        restored = {
+            "version_id": str(_uuid7()),
+            "version_number": len(workspace.official_versions) + 1,
+            "approved_draft_id": source["approved_draft_id"],
+            "approved_at": datetime.now(UTC).isoformat(),
+            "restored_from_version_id": version_id,
+        }
+        workspace.official_versions.append(restored)
+        workspace.idempotency[f"restore:{idempotency_key}"] = restored
+        return restored
+
+    @router.get("/schedule-versions")
+    def list_schedule_versions(
+        workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
+    ):
+        return {"items": tuple(reversed(workspace.official_versions))}
 
     @router.post("/schedule-edits", status_code=201)
     def create_edit(

@@ -210,6 +210,11 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .delta-good { color: var(--boundary); } .delta-tradeoff { color: #9d5a19; } .delta-flat { color: var(--muted); }
 .repair-evidence h2 { margin: 0; text-transform: uppercase; } .repair-evidence p, .repair-evidence li { color: var(--muted); line-height: 1.5; }
 @media (max-width: 850px) { .diff-rail { grid-template-columns: 1fr 1fr; } .diff-group { border-bottom: 1px solid var(--line); } .repair-evidence { grid-template-columns: 1fr; } .repair-evidence > section:first-child { border-right: 0; border-bottom: 1px solid var(--line); } }
+.version-history { display: grid; grid-template-columns: .8fr 1.2fr; gap: 1rem; margin-top: 1rem; padding: 1.2rem; border: 1px solid var(--line); background: var(--paper); }
+.version-history h2 { margin: 0; text-transform: uppercase; } .version-history p { color: var(--muted); }
+.version-history ul { margin: 0; padding: 0; list-style: none; }
+.version-history li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
+.version-history li span { display: grid; gap: .2rem; } .version-history small { color: var(--muted); }
 .topbar { position: sticky; top: 0; z-index: 5; background: rgba(242,245,239,.95); }
 .topbar nav { display: flex; gap: 1.3rem; }
 .topbar nav a { color: var(--muted); text-decoration: none; font-size: .86rem; }

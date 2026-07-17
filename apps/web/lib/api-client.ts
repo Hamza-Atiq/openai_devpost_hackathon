@@ -176,6 +176,27 @@ export class CrickOpsApiClient {
     return this.request(`/api/v1/disruptions/${encodeURIComponent(disruption.disruption_id)}/repair-runs`, {});
   }
 
+  async rejectSchedule(draftId: string): Promise<void> {
+    const response = await this.fetcher(
+      `/api/v1/schedule-drafts/${encodeURIComponent(draftId)}/reject`,
+      { method: "POST", credentials: "same-origin", cache: "no-store" },
+    );
+    if (!response.ok) throw new ApiProblemError((await response.json()) as ProblemDetails);
+  }
+
+  async restoreScheduleVersion(versionId: string): Promise<OfficialScheduleVersion> {
+    return this.request<OfficialScheduleVersion>(
+      `/api/v1/schedule-versions/${encodeURIComponent(versionId)}/restore`,
+      { confirmation: true },
+      { "Idempotency-Key": crypto.randomUUID() },
+    );
+  }
+
+  async getScheduleVersions(): Promise<OfficialScheduleVersion[]> {
+    const response = await this.get<{ items: OfficialScheduleVersion[] }>("/api/v1/schedule-versions");
+    return response.items;
+  }
+
   private async request<T = unknown>(
     path: string,
     body: object,

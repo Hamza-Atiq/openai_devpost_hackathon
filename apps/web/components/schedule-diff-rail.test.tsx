@@ -14,6 +14,9 @@ describe("Schedule diff rail", () => {
     expect(markup).toContain("Weather risk");
     expect(markup).toContain("Solver evidence");
     expect(markup).toContain("Approve repaired schedule");
+    expect(markup).toContain("Reject repair");
+    expect(markup).toContain("Restore this version");
+    expect(markup).toContain("history is never rewritten");
   });
 
   it("never exposes approval for an invalid repair", () => {

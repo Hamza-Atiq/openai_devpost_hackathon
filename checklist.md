@@ -478,7 +478,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 17 — Human approval and official versions
 
-- [ ] **TASK-047 — Integrate repair approval/rejection and restoration**
+- [x] **TASK-047 — Integrate repair approval/rejection and restoration**
   - **Release:** V1 required
   - **Dependencies:** TASK-036, TASK-046
   - **Requirements:** FR-018–FR-021, APPROVAL-002–APPROVAL-007, AC-008–AC-011

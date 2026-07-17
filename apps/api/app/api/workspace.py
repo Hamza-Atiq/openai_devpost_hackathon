@@ -24,6 +24,7 @@ class GuestWorkspace:
     schedule_runs: dict[str, dict[str, Any]] = field(default_factory=dict)
     drafts: dict[str, Any] = field(default_factory=dict)
     draft_revisions: dict[str, int] = field(default_factory=dict)
+    rejected_drafts: set[str] = field(default_factory=set)
     idempotency: dict[str, dict[str, object]] = field(default_factory=dict)
     official_versions: list[dict[str, object]] = field(default_factory=list)
     edits: dict[str, dict[str, object]] = field(default_factory=dict)

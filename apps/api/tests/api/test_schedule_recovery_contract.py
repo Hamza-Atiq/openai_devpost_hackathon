@@ -197,13 +197,14 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
         headers={"Idempotency-Key": "generation-repair"},
         json={"profiles": ["balanced", "weather_first", "fairness_first"]},
     ).json()["run_id"]
-    draft_id = client.get(f"/api/v1/schedule-runs/{run_id}").json()["draft_ids"][0]
+    draft_ids = client.get(f"/api/v1/schedule-runs/{run_id}").json()["draft_ids"]
+    draft_id = draft_ids[0]
     draft = client.get(f"/api/v1/schedule-drafts/{draft_id}").json()
-    client.post(
+    official = client.post(
         f"/api/v1/schedule-drafts/{draft_id}/approve",
         headers={"Idempotency-Key": "approval-repair"},
         json={"confirmation": True},
-    )
+    ).json()
     disruption = client.post(
         "/api/v1/disruptions",
         json={
@@ -222,3 +223,47 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     assert diff.status_code == 200
     assert diff.json()["moved"]
     assert diff.json()["unchanged"]
+    if disruption_type == "venue_unavailability":
+        rejected = client.post(f"/api/v1/schedule-drafts/{draft_ids[2]}/reject")
+        rejected_approval = client.post(
+            f"/api/v1/schedule-drafts/{draft_ids[2]}/approve",
+            headers={"Idempotency-Key": "cannot-approve-rejected"},
+            json={"confirmation": True},
+        )
+        assert rejected.status_code == 204
+        assert rejected_approval.status_code == 409
+        assert rejected_approval.json()["code"] == "draft_not_approvable"
+        client.post(
+            f"/api/v1/schedule-drafts/{draft_ids[1]}/approve",
+            headers={"Idempotency-Key": "newer-official"},
+            json={"confirmation": True},
+        )
+        stale = client.post(
+            f"/api/v1/schedule-drafts/{repair.json()['draft_id']}/approve",
+            headers={"Idempotency-Key": "approve-stale-repair"},
+            json={"confirmation": True},
+        )
+        assert stale.status_code == 409
+        assert stale.json()["code"] == "stale_official_baseline"
+        return
+    approved = client.post(
+        f"/api/v1/schedule-drafts/{repair.json()['draft_id']}/approve",
+        headers={"Idempotency-Key": f"approve-repair-{disruption_type}"},
+        json={"confirmation": True},
+    )
+    replay = client.post(
+        f"/api/v1/schedule-drafts/{repair.json()['draft_id']}/approve",
+        headers={"Idempotency-Key": f"approve-repair-{disruption_type}"},
+        json={"confirmation": True},
+    )
+    assert approved.status_code == 201
+    assert approved.json()["version_number"] == 2
+    assert replay.json()["version_id"] == approved.json()["version_id"]
+    restored = client.post(
+        f"/api/v1/schedule-versions/{official['version_id']}/restore",
+        headers={"Idempotency-Key": "restore-original"},
+        json={"confirmation": True},
+    )
+    assert restored.status_code == 201
+    assert restored.json()["version_number"] == 3
+    assert restored.json()["approved_draft_id"] == draft_id
