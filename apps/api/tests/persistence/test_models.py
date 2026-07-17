@@ -5,6 +5,7 @@ from sqlalchemy import Index, UniqueConstraint
 
 EXPECTED_TABLES = {
     "guest_workspaces",
+    "workspace_snapshots",
     "tournaments",
     "tournament_groups",
     "teams",

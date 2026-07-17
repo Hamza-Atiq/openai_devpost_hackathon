@@ -7,9 +7,10 @@ from fastapi import FastAPI, Request
 from app.agents.schemas import AgentMode
 from app.api.operations import OperationsState, build_operations_router
 from app.api.problems import install_problem_handlers
-from app.api.routes import build_v1_router
+from app.api.routes import COOKIE_NAME, build_v1_router
 from app.api.schedules import build_schedule_router
-from app.api.workspace import GuestWorkspaceStore
+from app.api.workspace import GuestWorkspaceStore, PostgresGuestWorkspaceStore
+from app.deployment.runtime import database_engine
 from app.limits.public_demo import DemoLimits, PublicDemoProtection
 from app.observability.middleware import install_observability_middleware
 from app.observability.recorder import ObservabilityRecorder
@@ -44,7 +45,14 @@ def create_app(
         add_trace_processor(application.state.sdk_trace_processor)
     install_observability_middleware(application, application.state.observability)
     install_problem_handlers(application)
-    application.state.workspace_store = GuestWorkspaceStore()
+    if server_settings and server_settings.database_url:
+        application.state.database_engine = database_engine(server_settings.database_url)
+        application.state.workspace_store = PostgresGuestWorkspaceStore(
+            application.state.database_engine
+        )
+    else:
+        application.state.database_engine = None
+        application.state.workspace_store = GuestWorkspaceStore()
     if demo_protection is None:
         demo_protection = PublicDemoProtection(
             limits=DemoLimits(
@@ -73,7 +81,21 @@ def create_app(
 
     @application.middleware("http")
     async def private_workspace_cache_control(request: Request, call_next):
+        guest_token = request.cookies.get(COOKIE_NAME)
+        if guest_token:
+            restored = application.state.workspace_store.get(guest_token)
+            if restored is not None and restored.audit_events:
+                application.state.operations.audit_events[restored.workspace_id] = list(
+                    restored.audit_events
+                )
         response = await call_next(request)
+        if guest_token:
+            cached = application.state.workspace_store.cached(guest_token)
+            if cached is not None:
+                cached.audit_events = list(
+                    application.state.operations.audit_events.get(cached.workspace_id, ())
+                )
+            application.state.workspace_store.persist(guest_token)
         if request.url.path.startswith("/api/v1") and request.url.path != "/api/v1/samples":
             response.headers["Cache-Control"] = "private, no-store, max-age=0"
             response.headers["Vary"] = "Cookie"

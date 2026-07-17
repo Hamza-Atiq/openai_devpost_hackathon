@@ -53,6 +53,16 @@ class GuestWorkspace(IdMixin, Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class WorkspaceSnapshot(Base):
+    __tablename__ = "workspace_snapshots"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("guest_workspaces.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class Tournament(IdMixin, WorkspaceOwned, Base):
     __tablename__ = "tournaments"
     __table_args__ = (
