@@ -516,7 +516,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 19 — Automated tests and evaluation
 
-- [ ] **TASK-051 — Assemble deterministic evaluation corpus**
+- [x] **TASK-051 — Assemble deterministic evaluation corpus**
   - **Release:** V1 required
   - **Dependencies:** QUALITY-GATE-17
   - **Requirements:** AC-001–AC-027, METRIC-001–METRIC-008

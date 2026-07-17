@@ -1,0 +1,1 @@
+{"schema_version":"eval-expected/v1","case_id":"provider-outage-v1","result":{"mode":"deterministic","fabricated_response":false,"agent_response_is_null":true,"deterministic_capability_count":6}}

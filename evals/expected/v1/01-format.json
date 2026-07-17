@@ -1,0 +1,1 @@
+{"schema_version":"eval-expected/v1","case_id":"format-structure-v1","result":{"match_count":15,"group_count":12,"semifinal_count":2,"final_count":1,"unique_match_count":15,"knockout_placeholders_valid":true,"shared_timezone":true,"preset_allocations":{"T10":120,"T20":240},"preset_hard_validity":{"T10":true,"T20":true}}}

@@ -1,0 +1,1 @@
+{"schema_version":"eval-expected/v1","case_id":"zero-capacity-infeasible-v1","result":{"blocked":true,"displayed_schedule_count":0,"evidence_codes":["cp_sat_infeasible"]}}

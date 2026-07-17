@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"structured-feedback-memory-v1","category":"feedback","requirements":["AC-012","AC-016","AC-017","METRIC-007"],"expected_file":"09-feedback.json"}

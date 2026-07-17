@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"three-profile-feasible-v1","category":"feasible","requirements":["AC-002","AC-003","AC-011","AC-013","AC-015","AC-018","AC-019","AC-020","METRIC-001","METRIC-006","METRIC-008"],"expected_file":"02-feasible.json"}

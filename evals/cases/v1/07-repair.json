@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"minimum-change-rain-repair-v1","category":"repair","requirements":["AC-008","AC-009","AC-010","METRIC-004"],"expected_file":"07-repair.json"}

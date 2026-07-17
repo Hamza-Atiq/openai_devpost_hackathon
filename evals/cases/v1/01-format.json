@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"format-structure-v1","category":"format","requirements":["AC-001","AC-021","AC-022","AC-023","AC-024","AC-026","AC-027","METRIC-003"],"expected_file":"01-format.json"}

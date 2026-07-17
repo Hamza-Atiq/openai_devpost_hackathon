@@ -1,0 +1,1 @@
+{"schema_version":"eval-expected/v1","case_id":"three-profile-feasible-v1","result":{"displayed_schedule_count":3,"hard_valid_displayed_count":3,"invalid_displayed_count":0,"profiles":["balanced","fairness-first","weather-first"],"explicit_confirmation_accepted":true}}

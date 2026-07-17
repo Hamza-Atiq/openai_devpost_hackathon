@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"zero-capacity-infeasible-v1","category":"infeasible","requirements":["AC-004","METRIC-002"],"expected_file":"03-infeasible.json"}

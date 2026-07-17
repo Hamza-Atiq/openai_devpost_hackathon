@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"deterministic-rain-v1","category":"weather","requirements":["AC-005","AC-006","AC-007","AC-025","METRIC-005"],"expected_file":"06-weather.json"}

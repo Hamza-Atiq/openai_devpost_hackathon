@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"same-venue-overlap-v1","category":"overlap","requirements":["AC-003","AC-010","AC-021","AC-026","METRIC-001","METRIC-002"],"expected_file":"04-overlap.json"}

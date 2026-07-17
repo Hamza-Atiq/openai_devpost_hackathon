@@ -1,0 +1,1 @@
+{"schema_version":"eval-case/v1","case_id":"provider-outage-v1","category":"provider","requirements":["AC-014"],"expected_file":"08-provider.json"}

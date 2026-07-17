@@ -1,0 +1,1 @@
+{"schema_version":"eval-expected/v1","case_id":"deterministic-rain-v1","result":{"digest_repeatable":true,"expected_digest_matches":true,"threshold_crossed":true,"affected_slot_unavailable":true}}
