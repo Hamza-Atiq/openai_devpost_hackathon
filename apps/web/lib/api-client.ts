@@ -55,6 +55,13 @@ export type ScheduleComparisonResponse = {
   identical_solution_groups: string[][];
 };
 
+export type OfficialScheduleVersion = {
+  version_id: string;
+  version_number: number;
+  approved_draft_id: string;
+  approved_at: string;
+};
+
 export class ApiProblemError extends Error {
   readonly code: string;
   readonly status: number;
@@ -106,6 +113,14 @@ export class CrickOpsApiClient {
     );
     return this.get<ScheduleComparisonResponse>(
       `/api/v1/schedule-comparisons?run_id=${encodeURIComponent(accepted.run_id)}`,
+    );
+  }
+
+  async approveSchedule(draftId: string): Promise<OfficialScheduleVersion> {
+    return this.request<OfficialScheduleVersion>(
+      `/api/v1/schedule-drafts/${encodeURIComponent(draftId)}/approve`,
+      { confirmation: true },
+      { "Idempotency-Key": crypto.randomUUID() },
     );
   }
 

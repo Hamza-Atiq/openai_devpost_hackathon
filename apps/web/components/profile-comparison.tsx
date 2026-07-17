@@ -2,6 +2,8 @@
 
 import React, { useState, type CSSProperties } from "react";
 
+import { ScheduleApprovalDialog } from "./schedule-approval-dialog";
+
 export type ComparisonMetrics = {
   weatherRisk: number | null;
   weatherCoverage: number;
@@ -12,6 +14,7 @@ export type ComparisonMetrics = {
 };
 
 export type ComparisonOption = {
+  draftId?: string;
   profile: "balanced" | "weather-first" | "fairness-first" | "custom";
   label: string;
   validationValid: boolean;
@@ -27,6 +30,7 @@ type ProfileComparisonProps = {
     options: ComparisonOption[];
     identicalProfiles: string[];
   }>;
+  onApprove?: (draftId: string) => Promise<{ versionNumber: number; approvedAt: string }>;
 };
 
 const defaultOptions: ComparisonOption[] = [
@@ -80,6 +84,7 @@ export function ProfileComparison({
   identicalProfiles = [],
   showCustom = false,
   onGenerate,
+  onApprove,
 }: ProfileComparisonProps) {
   const [customVisible, setCustomVisible] = useState(showCustom);
   const [selected, setSelected] = useState<string | null>(null);
@@ -87,6 +92,7 @@ export function ProfileComparison({
   const [identical, setIdentical] = useState(identicalProfiles);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [approvedVersion, setApprovedVersion] = useState<{ versionNumber: number; approvedAt: string } | null>(null);
 
   async function generate(priorities?: Record<string, number>) {
     if (!onGenerate) return;
@@ -193,6 +199,28 @@ export function ProfileComparison({
           <button className="primary-action" type="submit" disabled={pending}>{pending ? "Solving and validating…" : "Generate custom schedule"}</button>
         </form>
       )}
+
+      {selected && onApprove && displayedOptions.find((option) => option.profile === selected)?.draftId && (
+        <ScheduleApprovalDialog
+          profileLabel={displayedOptions.find((option) => option.profile === selected)!.label}
+          pending={pending}
+          onCancel={() => setSelected(null)}
+          onApprove={async () => {
+            const option = displayedOptions.find((item) => item.profile === selected)!;
+            setPending(true);
+            try {
+              const version = await onApprove(option.draftId!);
+              setApprovedVersion(version);
+              setSelected(null);
+            } catch (approvalError) {
+              setError(approvalError instanceof Error ? approvalError.message : "Approval failed.");
+            } finally {
+              setPending(false);
+            }
+          }}
+        />
+      )}
+      {approvedVersion && <div className="official-confirmation" role="status"><strong>Official Version {approvedVersion.versionNumber}</strong><span>Approved {new Date(approvedVersion.approvedAt).toLocaleString()}</span></div>}
     </section>
   );
 }

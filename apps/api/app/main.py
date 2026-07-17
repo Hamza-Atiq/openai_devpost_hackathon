@@ -15,7 +15,7 @@ def create_app(*, probe_config: SessionProbeConfig | None = None) -> FastAPI:
     application.state.workspace_store = GuestWorkspaceStore()
     application.state.operations = OperationsState(mode=AgentMode.DETERMINISTIC)
     application.include_router(build_v1_router(application.state.workspace_store))
-    application.include_router(build_schedule_router())
+    application.include_router(build_schedule_router(application.state.operations))
     application.include_router(build_operations_router(application.state.operations))
     application.include_router(
         build_session_probe_router(probe_config or SessionProbeConfig.from_env())

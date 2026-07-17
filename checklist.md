@@ -430,7 +430,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Three aligned validated options; Custom only on request; identical schedules and coverage differences explained.
   - **Validation:** UI tests verify metric consistency, validation gating, and no unsupported ranking.
 
-- [ ] **TASK-042 — Integrate explicit original-schedule approval**
+- [x] **TASK-042 — Integrate explicit original-schedule approval**
   - **Release:** V1 required
   - **Dependencies:** TASK-036, TASK-041
   - **Requirements:** FR-014–FR-015, APPROVAL-002–APPROVAL-007

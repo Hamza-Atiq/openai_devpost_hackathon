@@ -120,6 +120,16 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
   .priority-control-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 620px) { .priority-control-grid { grid-template-columns: 1fr; } }
+.approval-dialog { position: fixed; inset: 0; z-index: 20; display: grid; grid-template-columns: auto minmax(0, 560px); place-content: center; gap: 1.2rem; padding: 2rem; background: rgba(20,37,28,.72); }
+.approval-dialog > div:last-child { padding: 1.6rem; border-top: 5px solid var(--crease); background: var(--paper); box-shadow: 18px 18px 0 rgba(0,0,0,.18); }
+.approval-dialog-mark { display: grid; place-items: center; align-self: start; width: 3rem; height: 3rem; border-radius: 50%; background: var(--crease); color: var(--pitch-ink); font-size: 1.4rem; font-weight: 900; }
+.approval-dialog h2 { margin: 0; font-size: 2rem; text-transform: uppercase; }
+.approval-dialog p:not(.eyebrow) { color: var(--muted); line-height: 1.55; }
+.approval-confirm { display: flex; align-items: start; gap: .7rem; padding: 1rem; border: 1px solid var(--line); font-size: .82rem; line-height: 1.45; }
+.approval-confirm input { margin-top: .15rem; accent-color: var(--boundary); }
+.approval-dialog-actions { display: flex; justify-content: flex-end; gap: .7rem; margin-top: 1rem; }
+.official-confirmation { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding: 1rem 1.2rem; border-left: 5px solid var(--crease); background: #eaf1d7; }
+.official-confirmation span { color: var(--muted); font-size: .8rem; }
 .topbar { position: sticky; top: 0; z-index: 5; background: rgba(242,245,239,.95); }
 .topbar nav { display: flex; gap: 1.3rem; }
 .topbar nav a { color: var(--muted); text-decoration: none; font-size: .86rem; }

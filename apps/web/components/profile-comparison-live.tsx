@@ -17,6 +17,7 @@ export function ProfileComparisonLive() {
       priorities as CustomPriorities | undefined,
     );
     const options: ComparisonOption[] = response.options.map((option) => ({
+      draftId: option.draft_id,
       profile: option.profile,
       label: labels[option.profile],
       validationValid: option.validation_valid,
@@ -36,5 +37,10 @@ export function ProfileComparisonLive() {
     return { options, identicalProfiles };
   }
 
-  return <ProfileComparison onGenerate={generate} />;
+  async function approve(draftId: string) {
+    const version = await new CrickOpsApiClient().approveSchedule(draftId);
+    return { versionNumber: version.version_number, approvedAt: version.approved_at };
+  }
+
+  return <ProfileComparison onGenerate={generate} onApprove={approve} />;
 }

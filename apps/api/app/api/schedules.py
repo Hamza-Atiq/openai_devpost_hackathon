@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Header, Query, Response, status
 from pydantic import Field, model_validator
 
+from app.api.operations import OperationsState
 from app.api.problems import APIProblem
 from app.api.routes import require_workspace
 from app.api.workspace import GuestWorkspace
@@ -204,7 +205,7 @@ def _component_penalties(
     return penalties
 
 
-def build_schedule_router() -> APIRouter:
+def build_schedule_router(operations: OperationsState | None = None) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
     @router.post("/schedule-runs", status_code=status.HTTP_202_ACCEPTED)
@@ -284,6 +285,7 @@ def build_schedule_router() -> APIRouter:
         for option in batch.options:
             draft_id = str(_uuid7())
             workspace.drafts[draft_id] = option
+            workspace.draft_revisions[draft_id] = workspace.tournament.revision
             options.append(
                 {
                     "draft_id": draft_id,
@@ -418,6 +420,15 @@ def build_schedule_router() -> APIRouter:
                 title="Draft cannot be approved",
                 detail="Only an owned, valid draft with explicit confirmation may be approved.",
             )
+        draft_revision = workspace.draft_revisions.get(draft_id)
+        tournament_revision = workspace.tournament.revision if workspace.tournament else None
+        if draft_revision != tournament_revision:
+            raise APIProblem(
+                status=409,
+                code="stale_schedule_draft",
+                title="Schedule draft is stale",
+                detail="Regenerate this option from the latest confirmed tournament revision.",
+            )
         version = {
             "version_id": str(_uuid7()),
             "version_number": len(workspace.official_versions) + 1,
@@ -425,6 +436,22 @@ def build_schedule_router() -> APIRouter:
             "approved_at": datetime.now(UTC).isoformat(),
         }
         workspace.official_versions.append(version)
+        if operations is not None:
+            operations.audit_events.setdefault(workspace.workspace_id, []).append(
+                {
+                    "id": str(_uuid7()),
+                    "actor_type": "organizer",
+                    "event_type": "schedule_approved",
+                    "summary": f"Schedule Version {version['version_number']} approved.",
+                    "structured_payload": {
+                        "version_id": version["version_id"],
+                        "version_number": version["version_number"],
+                        "draft_id": draft_id,
+                    },
+                    "occurred_at": version["approved_at"],
+                    "agent_provenance": None,
+                }
+            )
         workspace.idempotency[f"approval:{idempotency_key}"] = version
         return version
 
@@ -565,6 +592,7 @@ def build_schedule_router() -> APIRouter:
             }
         )
         workspace.drafts[draft_id] = repaired
+        workspace.draft_revisions[draft_id] = workspace.tournament.revision
         diff = build_schedule_diff(
             baseline_version_id=UUID(str(official["version_id"])),
             draft_id=UUID(draft_id),
