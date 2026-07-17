@@ -123,4 +123,39 @@ describe("CrickOpsApiClient", () => {
       expect.objectContaining({ method: "GET", credentials: "same-origin" }),
     );
   });
+
+  it("loads organizer-safe audit events and records structured workspace feedback", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [], next_cursor: null, has_more: false }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ draft_id: "draft-1", reason: "venue_preference" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const client = new CrickOpsApiClient(fetcher);
+
+    await client.getAuditEvents();
+    await client.recordScheduleFeedback("draft-1", "venue_preference", "Prefer Riverside Oval.");
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/audit-events",
+      expect.objectContaining({ method: "GET", credentials: "same-origin" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/schedule-drafts/draft-1/feedback",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ reason: "venue_preference", note: "Prefer Riverside Oval." }),
+      }),
+    );
+  });
 });

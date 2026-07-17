@@ -70,6 +70,24 @@ export type OfficialScheduleVersion = {
   approved_at: string;
 };
 
+export type AuditEventResponse = {
+  id: string;
+  actor_type: string;
+  event_type: string;
+  summary: string;
+  structured_payload?: Record<string, unknown>;
+  occurred_at: string;
+};
+
+export type FeedbackReason =
+  | "weather_preference"
+  | "unfair_rest_distribution"
+  | "venue_preference"
+  | "unsuitable_time_slot"
+  | "rivalry_requirement"
+  | "travel_concern"
+  | "other";
+
 export class ApiProblemError extends Error {
   readonly code: string;
   readonly status: number;
@@ -195,6 +213,21 @@ export class CrickOpsApiClient {
   async getScheduleVersions(): Promise<OfficialScheduleVersion[]> {
     const response = await this.get<{ items: OfficialScheduleVersion[] }>("/api/v1/schedule-versions");
     return response.items;
+  }
+
+  async getAuditEvents(): Promise<{ items: AuditEventResponse[]; next_cursor: string | null; has_more: boolean }> {
+    return this.get("/api/v1/audit-events");
+  }
+
+  async recordScheduleFeedback(
+    draftId: string,
+    reason: FeedbackReason,
+    note?: string,
+  ): Promise<void> {
+    await this.request(`/api/v1/schedule-drafts/${encodeURIComponent(draftId)}/feedback`, {
+      reason,
+      note: note ?? null,
+    });
   }
 
   private async request<T = unknown>(

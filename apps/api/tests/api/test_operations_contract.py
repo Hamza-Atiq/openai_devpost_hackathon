@@ -83,6 +83,13 @@ def test_export_is_synchronous_and_redacts_internal_fields() -> None:
         "api_key": "secret",
         "provider_metadata": {"request_id": "private"},
     }
+    workspace.feedback.append(
+        {
+            "draft_id": "draft-1",
+            "reason": "weather_preference",
+            "note": "Prefer lower forecast risk.",
+        }
+    )
     state.audit_events[workspace_id] = [_event(1, workspace_id, event_type="schedule_approved")]
 
     response = client.get("/api/v1/workspace/export")
@@ -97,6 +104,13 @@ def test_export_is_synchronous_and_redacts_internal_fields() -> None:
         "status": "ready",
         "profile": "balanced",
     }
+    assert document["workspace"]["feedback"] == [
+        {
+            "draft_id": "draft-1",
+            "reason": "weather_preference",
+            "note": "Prefer lower forecast risk.",
+        }
+    ]
     assert document["audit_events"][0]["structured_payload"] == {
         "schedule_version": 1,
         "nested": {"decision": "approved"},

@@ -18,10 +18,10 @@ export function WorkspaceShell({ children, director }: WorkspaceShellProps) {
           <span>CrickOps <b>AI</b></span>
         </Link>
         <nav aria-label="Workspace navigation">
-          <a aria-current="page" href="#setup">Setup</a>
-          <a href="#options">Options</a>
-          <a href="#schedule">Schedule</a>
-          <a href="#activity">Activity</a>
+          <Link href="/workspace/setup">Setup</Link>
+          <Link href="/workspace/options">Options</Link>
+          <Link href="/workspace/schedule">Schedule</Link>
+          <Link href="/workspace/activity">Activity</Link>
         </nav>
         <span className="mode-pill">Deterministic mode</span>
       </header>
@@ -32,4 +32,3 @@ export function WorkspaceShell({ children, director }: WorkspaceShellProps) {
     </div>
   );
 }
-

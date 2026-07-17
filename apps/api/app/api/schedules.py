@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
 from pydantic import Field, model_validator
 
+from app.api.audit import append_audit_event
 from app.api.operations import OperationsState
 from app.api.problems import APIProblem
 from app.api.routes import require_workspace
@@ -50,6 +51,19 @@ class ScheduleRunInput(DomainModel):
 
 class ApprovalInput(DomainModel):
     confirmation: bool
+
+
+class ScheduleFeedbackInput(DomainModel):
+    reason: Literal[
+        "weather_preference",
+        "unfair_rest_distribution",
+        "venue_preference",
+        "unsuitable_time_slot",
+        "rivalry_requirement",
+        "travel_concern",
+        "other",
+    ] | None = None
+    note: str | None = Field(default=None, max_length=500)
 
 
 class DisruptionInput(DomainModel):
@@ -301,6 +315,18 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             "options": options,
         }
         workspace.schedule_runs[run_id] = run
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="schedule_options_generated",
+                summary=f"Generated and validated {len(options)} schedule options.",
+                structured_payload={
+                    "run_id": run_id,
+                    "profiles": [str(item["profile"]) for item in options],
+                },
+                actor_type="system",
+            )
         accepted = {"run_id": run_id, "status": "accepted"}
         workspace.idempotency[f"generation:{idempotency_key}"] = accepted
         return accepted
@@ -390,7 +416,7 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
     @router.post("/schedule-drafts/{draft_id}/feedback", status_code=201)
     def record_feedback(
         draft_id: str,
-        body: dict[str, Any],
+        body: ScheduleFeedbackInput,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ):
         if draft_id not in workspace.drafts:
@@ -400,7 +426,18 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 title="Schedule draft not found",
                 detail="The draft does not belong to this workspace.",
             )
-        return {"draft_id": draft_id, "feedback": body}
+        payload = body.model_dump(mode="json", exclude={"schema_version"})
+        feedback = {"draft_id": draft_id, **payload, "recorded_at": datetime.now(UTC).isoformat()}
+        workspace.feedback.append(feedback)
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="schedule_feedback_recorded",
+                summary="Organizer recorded structured schedule feedback.",
+                structured_payload={"draft_id": draft_id, "reason": body.reason},
+            )
+        return feedback
 
     @router.post("/schedule-drafts/{draft_id}/approve", status_code=201)
     def approve_draft(
@@ -456,20 +493,16 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
         }
         workspace.official_versions.append(version)
         if operations is not None:
-            operations.audit_events.setdefault(workspace.workspace_id, []).append(
-                {
-                    "id": str(_uuid7()),
-                    "actor_type": "organizer",
-                    "event_type": "schedule_approved",
-                    "summary": f"Schedule Version {version['version_number']} approved.",
-                    "structured_payload": {
-                        "version_id": version["version_id"],
-                        "version_number": version["version_number"],
-                        "draft_id": draft_id,
-                    },
-                    "occurred_at": version["approved_at"],
-                    "agent_provenance": None,
-                }
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="schedule_approved",
+                summary=f"Schedule Version {version['version_number']} approved.",
+                structured_payload={
+                    "version_id": version["version_id"],
+                    "version_number": version["version_number"],
+                    "draft_id": draft_id,
+                },
             )
         workspace.idempotency[f"approval:{idempotency_key}"] = version
         return version
@@ -487,6 +520,14 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 detail="The draft does not belong to this workspace.",
             )
         workspace.rejected_drafts.add(draft_id)
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="schedule_rejected",
+                summary="Organizer rejected a schedule draft.",
+                structured_payload={"draft_id": draft_id},
+            )
         return Response(status_code=204)
 
     @router.post("/schedule-versions/{version_id}/restore", status_code=201)
@@ -529,6 +570,20 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             "restored_from_version_id": version_id,
         }
         workspace.official_versions.append(restored)
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="schedule_restored",
+                summary=(
+                    f"Version {source['version_number']} restored as new official "
+                    f"Version {restored['version_number']}."
+                ),
+                structured_payload={
+                    "restored_from_version_id": version_id,
+                    "version_id": restored["version_id"],
+                },
+            )
         workspace.idempotency[f"restore:{idempotency_key}"] = restored
         return restored
 
@@ -590,6 +645,18 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             **body.model_dump(mode="json"),
         }
         workspace.disruptions[disruption_id] = disruption
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="disruption_declared",
+                summary=f"Organizer declared {body.type.replace('_', ' ')}.",
+                structured_payload={
+                    "disruption_id": disruption_id,
+                    "type": body.type,
+                    "unavailable_slot_count": len(body.unavailable_slot_ids),
+                },
+            )
         return disruption
 
     @router.post("/disruptions/{disruption_id}/repair-runs", status_code=202)
@@ -671,6 +738,18 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             draft_metrics=repaired.metrics,
         )
         workspace.schedule_diffs[draft_id] = diff.model_dump(mode="json")
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="repair_generated",
+                summary="Generated and validated a minimum-change repair draft.",
+                structured_payload={
+                    "draft_id": draft_id,
+                    "disruption_id": disruption_id,
+                    "moved_count": len(diff.moved),
+                },
+            )
         return {
             "run_id": str(uuid4()),
             "status": "completed",

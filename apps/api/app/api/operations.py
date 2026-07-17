@@ -5,10 +5,13 @@ import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import Enum
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from app.agents.schemas import AgentMode
 from app.api.problems import APIProblem
@@ -69,6 +72,8 @@ def _is_sensitive_key(key: object) -> bool:
 
 
 def _organizer_safe(value: object) -> object:
+    if isinstance(value, BaseModel):
+        return _organizer_safe(value.model_dump(mode="json"))
     if isinstance(value, Mapping):
         return {
             str(key): _organizer_safe(item)
@@ -79,6 +84,10 @@ def _organizer_safe(value: object) -> object:
         return [_organizer_safe(item) for item in value]
     if isinstance(value, datetime):
         return value.isoformat()
+    if isinstance(value, Enum):
+        return _organizer_safe(value.value)
+    if isinstance(value, UUID):
+        return str(value)
     return value
 
 
@@ -157,6 +166,7 @@ def _workspace_export(
         "drafts": workspace.drafts,
         "official_versions": workspace.official_versions,
         "edits": workspace.edits,
+        "feedback": workspace.feedback,
         "disruptions": workspace.disruptions,
         "schedule_diffs": workspace.schedule_diffs,
     }

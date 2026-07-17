@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastapi import APIRouter, Cookie, Depends, Query, Request, Response, status
 from pydantic import Field
 
+from app.api.audit import append_audit_event
 from app.api.problems import APIProblem
 from app.api.workspace import GuestWorkspace, GuestWorkspaceStore
 from app.domain.common import DomainModel
 from app.domain.samples import available_samples, load_sample
+
+if TYPE_CHECKING:
+    from app.api.operations import OperationsState
 
 COOKIE_NAME = "__Host-crickops_guest"
 
@@ -87,7 +91,10 @@ def require_workspace(
     return workspace
 
 
-def build_v1_router(store: GuestWorkspaceStore) -> APIRouter:
+def build_v1_router(
+    store: GuestWorkspaceStore,
+    operations: OperationsState | None = None,
+) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
     @router.get("/samples")
@@ -280,6 +287,17 @@ def build_v1_router(store: GuestWorkspaceStore) -> APIRouter:
             "selection": previous_selection,
             "confirmed_revision": next_revision,
         }
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="constraints_confirmed",
+                summary="Organizer confirmed structured tournament constraints.",
+                structured_payload={
+                    "revision": next_revision,
+                    "selection_keys": sorted(previous_selection),
+                },
+            )
         return {
             "status": TournamentStatus.READY_TO_SCHEDULE,
             "revision": next_revision,

@@ -192,6 +192,16 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     disruption_type: str,
 ) -> None:
     client = client_with_sample()
+    workspace = client.get("/api/v1/workspace").json()
+    confirmed = client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": workspace["tournament"]["revision"],
+            "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+        },
+    )
+    assert confirmed.status_code == 200
     run_id = client.post(
         "/api/v1/schedule-runs",
         headers={"Idempotency-Key": "generation-repair"},
@@ -259,6 +269,16 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     assert approved.status_code == 201
     assert approved.json()["version_number"] == 2
     assert replay.json()["version_id"] == approved.json()["version_id"]
+    audit = client.get("/api/v1/audit-events")
+    assert audit.status_code == 200
+    assert [event["event_type"] for event in audit.json()["items"]] == [
+        "schedule_approved",
+        "repair_generated",
+        "disruption_declared",
+        "schedule_approved",
+        "schedule_options_generated",
+        "constraints_confirmed",
+    ]
     restored = client.post(
         f"/api/v1/schedule-versions/{official['version_id']}/restore",
         headers={"Idempotency-Key": "restore-original"},

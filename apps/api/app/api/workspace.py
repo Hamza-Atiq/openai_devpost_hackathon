@@ -30,6 +30,7 @@ class GuestWorkspace:
     edits: dict[str, dict[str, object]] = field(default_factory=dict)
     disruptions: dict[str, dict[str, object]] = field(default_factory=dict)
     schedule_diffs: dict[str, dict[str, object]] = field(default_factory=dict)
+    feedback: list[dict[str, object]] = field(default_factory=list)
     constraint_confirmation: dict[str, object] | None = None
 
 

@@ -486,7 +486,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Approval verifies current baseline and creates new version; rejection/cancel preserves previous official schedule.
   - **Validation:** Rain, venue, stale-baseline, double-click/idempotency, rejection, and restore E2E tests pass.
 
-- [ ] **TASK-048 — Complete organizer audit timeline and workspace feedback**
+- [x] **TASK-048 — Complete organizer audit timeline and workspace feedback**
   - **Release:** V1 required
   - **Dependencies:** TASK-034, TASK-047
   - **Requirements:** FR-024–FR-027, DATA-006, AC-012

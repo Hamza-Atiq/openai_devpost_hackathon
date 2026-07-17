@@ -14,7 +14,9 @@ def create_app(*, probe_config: SessionProbeConfig | None = None) -> FastAPI:
     install_problem_handlers(application)
     application.state.workspace_store = GuestWorkspaceStore()
     application.state.operations = OperationsState(mode=AgentMode.DETERMINISTIC)
-    application.include_router(build_v1_router(application.state.workspace_store))
+    application.include_router(
+        build_v1_router(application.state.workspace_store, application.state.operations)
+    )
     application.include_router(build_schedule_router(application.state.operations))
     application.include_router(build_operations_router(application.state.operations))
     application.include_router(

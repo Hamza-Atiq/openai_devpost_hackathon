@@ -19,19 +19,39 @@ def _generated() -> tuple[TestClient, object, str]:
 
 def test_explicit_approval_creates_version_timestamp_and_audit_event() -> None:
     client, _app, draft_id = _generated()
+    feedback = client.post(
+        f"/api/v1/schedule-drafts/{draft_id}/feedback",
+        json={
+            "reason": "unfair_rest_distribution",
+            "note": "Keep the next comparison focused on group-stage recovery.",
+        },
+    )
     approved = client.post(
         f"/api/v1/schedule-drafts/{draft_id}/approve",
         headers={"Idempotency-Key": "approve-original"},
         json={"confirmation": True},
     )
     audit = client.get("/api/v1/audit-events")
+    exported = client.get("/api/v1/workspace/export")
 
+    assert feedback.status_code == 201
+    assert feedback.json()["reason"] == "unfair_rest_distribution"
     assert approved.status_code == 201
     assert approved.json()["version_number"] == 1
     assert approved.json()["approved_at"].endswith("+00:00")
     assert audit.status_code == 200
-    assert audit.json()["items"][-1]["event_type"] == "schedule_approved"
-    assert "Version 1" in audit.json()["items"][-1]["summary"]
+    event_types = [event["event_type"] for event in audit.json()["items"]]
+    assert event_types == [
+        "schedule_approved",
+        "schedule_feedback_recorded",
+        "schedule_options_generated",
+    ]
+    assert "Version 1" in audit.json()["items"][0]["summary"]
+    assert exported.json()["workspace"]["feedback"][0]["reason"] == "unfair_rest_distribution"
+    serialized = str(audit.json()).lower()
+    assert "raw_prompt" not in serialized
+    assert "hidden_reasoning" not in serialized
+    assert "stack_trace" not in serialized
 
 
 def test_stale_draft_remains_unofficial() -> None:
