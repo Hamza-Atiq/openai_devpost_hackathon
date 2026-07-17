@@ -27,6 +27,8 @@ _KNOWN_CRICKOPS_NAMES = frozenset(
         "CRICKOPS_COOKIE_SECRET",
         "CRICKOPS_ENCRYPTION_SECRET",
         "CRICKOPS_ALLOWED_FRONTEND_ORIGINS",
+        "CRICKOPS_PROVIDER_DAILY_BUDGET_USD",
+        "CRICKOPS_EMERGENCY_DETERMINISTIC_MODE",
     }
 )
 _DEPLOYED_ENVIRONMENTS = frozenset(
@@ -49,6 +51,19 @@ def _strict_boolean(environment: Mapping[str, str], name: str, *, default: bool)
     if normalized not in {"true", "false"}:
         raise ConfigurationError(f"{name} must be either true or false")
     return normalized == "true"
+
+
+def _positive_float(environment: Mapping[str, str], name: str, *, default: float) -> float:
+    value = _optional_value(environment, name)
+    if value is None:
+        return default
+    try:
+        parsed = float(value)
+    except ValueError as error:
+        raise ConfigurationError(f"{name} must be a positive number") from error
+    if parsed <= 0:
+        raise ConfigurationError(f"{name} must be a positive number")
+    return parsed
 
 
 def _validate_database_url(value: str | None, *, required: bool) -> str | None:
@@ -117,6 +132,8 @@ class ServerSettings:
     cookie_secret: str | None = field(repr=False)
     encryption_secret: str | None = field(repr=False)
     allowed_frontend_origins: tuple[str, ...]
+    provider_daily_budget_usd: float
+    emergency_deterministic_mode: bool
 
     @classmethod
     def from_env(cls, environment: Mapping[str, str] | None = None) -> ServerSettings:
@@ -176,5 +193,15 @@ class ServerSettings:
             allowed_frontend_origins=_validate_origins(
                 _optional_value(values, "CRICKOPS_ALLOWED_FRONTEND_ORIGINS"),
                 required=deployed,
+            ),
+            provider_daily_budget_usd=_positive_float(
+                values,
+                "CRICKOPS_PROVIDER_DAILY_BUDGET_USD",
+                default=50.0,
+            ),
+            emergency_deterministic_mode=_strict_boolean(
+                values,
+                "CRICKOPS_EMERGENCY_DETERMINISTIC_MODE",
+                default=False,
             ),
         )

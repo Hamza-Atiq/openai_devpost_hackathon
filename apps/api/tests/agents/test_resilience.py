@@ -15,6 +15,7 @@ from app.agents.resilience import (
     TransientProviderError,
 )
 from app.agents.schemas import AgentMode
+from app.limits.public_demo import DemoLimits, PublicDemoProtection
 from app.observability.context import observation_scope
 from app.observability.dependency_health import CircuitState, DependencyHealthRegistry
 from app.observability.recorder import ObservabilityRecorder
@@ -186,3 +187,44 @@ def test_open_circuit_half_opens_and_recovers_primary_automatically() -> None:
     assert recovered.mode is AgentMode.GPT_5_6
     assert health.get("openai").circuit_state is CircuitState.CLOSED
     assert "primary_half_open" in recovered.transitions
+
+
+def test_provider_budget_stops_retries_then_enters_deterministic_mode() -> None:
+    protection = PublicDemoProtection(
+        limits=DemoLimits(provider_daily_budget_usd=50),
+        pseudonym_salt=b"b" * 32,
+    )
+    calls: list[str] = []
+
+    async def invoke(route):
+        calls.append(route.provider)
+        if route.provider == "openai":
+            raise TransientProviderError("temporary")
+        return _decision(route.provider, route.model)
+
+    protection.record_provider_cost(37.5)
+    conserved = asyncio.run(
+        AgentResilienceManager(
+            router=_router(),
+            health=DependencyHealthRegistry(),
+            sleep=_no_sleep,
+            retry_jitter=lambda: 0,
+            retries_allowed=lambda: protection.nonessential_retries_allowed,
+            agent_work_allowed=lambda: protection.agent_work_allowed,
+        ).run(invoke)
+    )
+    assert conserved.mode is AgentMode.FALLBACK_MODEL
+    assert calls == ["openai", "configured-fallback"]
+
+    protection.record_provider_cost(12.5)
+    deterministic = asyncio.run(
+        AgentResilienceManager(
+            router=_router(),
+            health=DependencyHealthRegistry(),
+            retries_allowed=lambda: protection.nonessential_retries_allowed,
+            agent_work_allowed=lambda: protection.agent_work_allowed,
+        ).run(invoke)
+    )
+    assert deterministic.mode is AgentMode.DETERMINISTIC
+    assert deterministic.attempt_count == 0
+    assert calls == ["openai", "configured-fallback"]

@@ -138,6 +138,10 @@ class ObservabilityRecorder:
             self._metrics["workspace_expirations_total"] += 1
         if record.component == "hero" and record.outcome == "success":
             self._metrics["hero_flow_success_total"] += 1
+        if record.component == "quota" and record.event == "request_denied":
+            self._metrics["public_demo_denials_total"] += 1
+        if record.component == "quota" and record.event == "provider_budget_mode_changed":
+            self._metrics["provider_budget_transitions_total"] += 1
 
     def records_for(self, correlation_id: str) -> tuple[ObservationRecord, ...]:
         with self._lock:

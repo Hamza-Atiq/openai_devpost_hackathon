@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Header, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from pydantic import Field, model_validator
 
 from app.api.audit import append_audit_event
@@ -20,6 +20,7 @@ from app.domain.matches import MatchDefinition, MatchStage
 from app.domain.schedules import ScheduleMetrics, ScheduleProfile
 from app.domain.venues import SlotAvailability
 from app.fairness.evaluator import evaluate_schedule_metrics
+from app.limits.public_demo import PublicDemoProtection, UsageAction
 from app.observability.recorder import observe
 from app.optimization.config import load_optimization_config
 from app.scheduling.comparison import compare_profile_options
@@ -222,12 +223,16 @@ def _component_penalties(
     return penalties
 
 
-def build_schedule_router(operations: OperationsState | None = None) -> APIRouter:
+def build_schedule_router(
+    operations: OperationsState | None = None,
+    demo_protection: PublicDemoProtection | None = None,
+) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
     @router.post("/schedule-runs", status_code=status.HTTP_202_ACCEPTED)
     def start_schedule_run(
         body: ScheduleRunInput,
+        request: Request,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
         idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
     ) -> dict[str, object]:
@@ -276,6 +281,30 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 title="Custom profile required",
                 detail="Request the Custom profile when custom priorities are supplied.",
             )
+        if demo_protection is not None:
+            decision = demo_protection.consume(
+                UsageAction.GENERATION,
+                workspace_id=workspace.workspace_id,
+                ip_address=request.client.host if request.client else None,
+            )
+            if not decision.allowed:
+                reset = decision.reset_at.isoformat() if decision.reset_at else "capacity clears"
+                raise APIProblem(
+                    status=429,
+                    code="public_demo_limit_exceeded",
+                    title="Public demo limit reached",
+                    detail=f"Schedule generation is temporarily limited; retry after {reset}.",
+                    retryable=True,
+                )
+            job = demo_protection.acquire_job(workspace.workspace_id)
+            if not job.allowed:
+                raise APIProblem(
+                    status=429,
+                    code="public_demo_capacity_reached",
+                    title="Scheduling capacity reached",
+                    detail="Another scheduling job is active; retry when it completes.",
+                    retryable=True,
+                )
         matches, eligibility = _eligibility(workspace)
         observe(
             component="weather",
@@ -287,19 +316,23 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             },
         )
         solver_started = perf_counter()
-        batch = generate_profile_options(
-            workspace.tournament,
-            matches,
-            eligibility,
-            generated_at=datetime.now(UTC),
-            metric_evaluator=_metric_evaluator(workspace, matches),
-            component_penalties=_component_penalties(workspace, matches, eligibility),
-            custom_priorities=(
-                body.custom_priorities.model_dump(exclude={"schema_version"})
-                if body.custom_priorities is not None
-                else None
-            ),
-        )
+        try:
+            batch = generate_profile_options(
+                workspace.tournament,
+                matches,
+                eligibility,
+                generated_at=datetime.now(UTC),
+                metric_evaluator=_metric_evaluator(workspace, matches),
+                component_penalties=_component_penalties(workspace, matches, eligibility),
+                custom_priorities=(
+                    body.custom_priorities.model_dump(exclude={"schema_version"})
+                    if body.custom_priorities is not None
+                    else None
+                ),
+            )
+        finally:
+            if demo_protection is not None:
+                demo_protection.release_job(workspace.workspace_id)
         solver_duration_ms = round((perf_counter() - solver_started) * 1000, 3)
         observe(
             component="solver",
@@ -726,6 +759,7 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
     @router.post("/disruptions/{disruption_id}/repair-runs", status_code=202)
     def start_repair(
         disruption_id: str,
+        request: Request,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ):
         disruption = workspace.disruptions.get(disruption_id)
@@ -748,6 +782,30 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 title="Tournament is not ready",
                 detail="The active tournament configuration is unavailable.",
             )
+        if demo_protection is not None:
+            decision = demo_protection.consume(
+                UsageAction.REPAIR,
+                workspace_id=workspace.workspace_id,
+                ip_address=request.client.host if request.client else None,
+            )
+            if not decision.allowed:
+                reset = decision.reset_at.isoformat() if decision.reset_at else "capacity clears"
+                raise APIProblem(
+                    status=429,
+                    code="public_demo_limit_exceeded",
+                    title="Public demo limit reached",
+                    detail=f"Schedule repair is temporarily limited; retry after {reset}.",
+                    retryable=True,
+                )
+            job = demo_protection.acquire_job(workspace.workspace_id)
+            if not job.allowed:
+                raise APIProblem(
+                    status=429,
+                    code="public_demo_capacity_reached",
+                    title="Scheduling capacity reached",
+                    detail="Another scheduling job is active; retry when it completes.",
+                    retryable=True,
+                )
         repaired_tournament = tournament.model_copy(
             update={
                 "slots": tuple(
@@ -768,13 +826,17 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             for match in matches
         }
         solver_started = perf_counter()
-        result = repair_schedule(
-            repaired_tournament,
-            matches,
-            baseline.placements,
-            eligible,
-            generated_at=datetime.now(UTC),
-        )
+        try:
+            result = repair_schedule(
+                repaired_tournament,
+                matches,
+                baseline.placements,
+                eligible,
+                generated_at=datetime.now(UTC),
+            )
+        finally:
+            if demo_protection is not None:
+                demo_protection.release_job(workspace.workspace_id)
         observe(
             component="solver",
             event="minimum_change_repair",

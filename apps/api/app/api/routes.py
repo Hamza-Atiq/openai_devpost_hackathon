@@ -11,6 +11,7 @@ from app.api.problems import APIProblem
 from app.api.workspace import GuestWorkspace, GuestWorkspaceStore
 from app.domain.common import DomainModel
 from app.domain.samples import available_samples, load_sample
+from app.limits.public_demo import PublicDemoProtection, UsageAction
 
 if TYPE_CHECKING:
     from app.api.operations import OperationsState
@@ -94,6 +95,7 @@ def require_workspace(
 def build_v1_router(
     store: GuestWorkspaceStore,
     operations: OperationsState | None = None,
+    demo_protection: PublicDemoProtection | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
@@ -333,8 +335,24 @@ def build_v1_router(
     @router.post("/weather/refresh")
     def refresh_weather(
         body: WeatherRefreshInput,
+        request: Request,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ) -> dict[str, object]:
+        if demo_protection is not None:
+            decision = demo_protection.consume(
+                UsageAction.WEATHER,
+                workspace_id=workspace.workspace_id,
+                ip_address=request.client.host if request.client else None,
+            )
+            if not decision.allowed:
+                reset = decision.reset_at.isoformat() if decision.reset_at else "capacity clears"
+                raise APIProblem(
+                    status=429,
+                    code="public_demo_limit_exceeded",
+                    title="Public demo limit reached",
+                    detail=f"Weather refresh is temporarily limited; retry after {reset}.",
+                    retryable=True,
+                )
         workspace.weather = {
             "mode": body.mode,
             "quality": "unavailable" if body.mode == "live" else "deterministic",

@@ -88,3 +88,27 @@ def test_boolean_values_are_strict() -> None:
                 "CRICKOPS_LIVE_SERVICES_ENABLED": "sometimes",
             }
         )
+
+
+def test_public_demo_budget_and_emergency_switch_are_typed() -> None:
+    settings = ServerSettings.from_env(
+        {
+            "CRICKOPS_ENV": "test",
+            "CRICKOPS_PROVIDER_DAILY_BUDGET_USD": "75.50",
+            "CRICKOPS_EMERGENCY_DETERMINISTIC_MODE": "true",
+        }
+    )
+
+    assert settings.provider_daily_budget_usd == 75.50
+    assert settings.emergency_deterministic_mode is True
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "not-money"])
+def test_public_demo_budget_must_be_positive(value: str) -> None:
+    with pytest.raises(ConfigurationError, match="CRICKOPS_PROVIDER_DAILY_BUDGET_USD"):
+        ServerSettings.from_env(
+            {
+                "CRICKOPS_ENV": "test",
+                "CRICKOPS_PROVIDER_DAILY_BUDGET_USD": value,
+            }
+        )

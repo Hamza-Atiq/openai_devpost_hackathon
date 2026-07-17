@@ -506,7 +506,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Correlation ID spans HTTP/agent/tool/solver/validator/weather/DB/audit; sensitive content excluded.
   - **Validation:** One hero run resolves end to end by correlation ID; redaction fixtures do not appear in logs/traces.
 
-- [ ] **TASK-050 — Implement public-demo limits and emergency deterministic mode**
+- [x] **TASK-050 — Implement public-demo limits and emergency deterministic mode**
   - **Release:** V1 required
   - **Dependencies:** TASK-027, TASK-049
   - **Requirements:** NFR-013, FR-028–FR-030

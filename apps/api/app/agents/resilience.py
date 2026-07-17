@@ -103,6 +103,8 @@ class AgentResilienceManager:
         sleep: Sleep = asyncio.sleep,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         retry_jitter: Callable[[], float] = lambda: random.uniform(0, 0.1),
+        retries_allowed: Callable[[], bool] = lambda: True,
+        agent_work_allowed: Callable[[], bool] = lambda: True,
     ) -> None:
         if timeout_seconds <= 0 or max_retries < 0 or failure_threshold <= 0:
             raise ValueError("resilience budgets must be positive")
@@ -113,6 +115,8 @@ class AgentResilienceManager:
         self._sleep = sleep
         self._clock = clock
         self._retry_jitter = retry_jitter
+        self._retries_allowed = retries_allowed
+        self._agent_work_allowed = agent_work_allowed
         self._breakers = {
             "openai": _CircuitBreaker(failure_threshold, recovery_after),
             "fallback": _CircuitBreaker(failure_threshold, recovery_after),
@@ -126,7 +130,8 @@ class AgentResilienceManager:
     ) -> tuple[AgentDecision | None, int, Exception | None]:
         attempts = 0
         last_error: Exception | None = None
-        for retry in range(self._max_retries + 1):
+        retry_budget = self._max_retries if self._retries_allowed() else 0
+        for retry in range(retry_budget + 1):
             attempts += 1
             try:
                 raw_output = await asyncio.wait_for(invoke(route), timeout=self._timeout_seconds)
@@ -190,7 +195,7 @@ class AgentResilienceManager:
                 },
             )
             transient = isinstance(last_error, TransientProviderError)
-            if not transient or breaker.state is CircuitState.OPEN or retry == self._max_retries:
+            if not transient or breaker.state is CircuitState.OPEN or retry == retry_budget:
                 break
             await self._sleep(0.25 * (2**retry) + self._retry_jitter())
         return None, attempts, last_error
@@ -198,6 +203,9 @@ class AgentResilienceManager:
     async def run(self, invoke: InvokeAgent) -> ResilientAgentResult:
         transitions: list[str] = []
         attempt_count = 0
+        if not self._agent_work_allowed():
+            transitions.append("provider_budget_deterministic")
+            return self._deterministic_result(attempt_count, transitions)
         primary = self._router.primary()
         primary_breaker = self._breakers["openai"]
         primary_allowed, half_open = primary_breaker.before_request(self._clock())
@@ -266,6 +274,13 @@ class AgentResilienceManager:
                     return result
 
         transitions.append("deterministic_active")
+        return self._deterministic_result(attempt_count, transitions)
+
+    def _deterministic_result(
+        self,
+        attempt_count: int,
+        transitions: list[str],
+    ) -> ResilientAgentResult:
         result = ResilientAgentResult(
             mode=AgentMode.DETERMINISTIC,
             deterministic=self._router.deterministic_result(
