@@ -442,7 +442,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 15 — Weather-risk visualization
 
-- [ ] **TASK-043 — Build risk, coverage, freshness, and attribution UI**
+- [x] **TASK-043 — Build risk, coverage, freshness, and attribution UI**
   - **Release:** V1 required
   - **Dependencies:** TASK-024, TASK-041
   - **Requirements:** WEATHER-003, WEATHER-008–WEATHER-013, UX-004, AC-005, AC-025
