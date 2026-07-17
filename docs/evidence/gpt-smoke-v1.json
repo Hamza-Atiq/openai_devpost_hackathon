@@ -1,0 +1,8 @@
+{
+  "schema_version": "gpt-smoke/v1",
+  "status": "missing_api_key",
+  "model": "gpt-5.6",
+  "genuine_model_calls": 0,
+  "validated_roles": [],
+  "fabricated_response": false
+}
