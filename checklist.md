@@ -552,7 +552,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 20 — Deployment
 
-- [ ] **TASK-055 — Containerize and deploy Railway backend/database/worker**
+- [x] **TASK-055 — Containerize and deploy Railway backend/database/worker**
   - **Release:** V1 required
   - **Dependencies:** TASK-050, TASK-054
   - **Requirements:** DEPLOY-002–DEPLOY-007, NFR-009–NFR-010
@@ -560,7 +560,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Production API/worker/PostgreSQL deploy with migrations, readiness, logs, retention job, secrets.
   - **Validation:** Railway status/health/log verification and database migration smoke test.
 
-- [ ] **TASK-056 — Deploy Vercel frontend and same-origin proxy**
+- [x] **TASK-056 — Deploy Vercel frontend and same-origin proxy**
   - **Release:** V1 required
   - **Dependencies:** TASK-005, TASK-055
   - **Requirements:** DEPLOY-001, DEPLOY-008, SEC-001–SEC-003
@@ -568,7 +568,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Public application proxies `/api/v1/*`, preserves host cookie, disables rewrite caching, and isolates preview.
   - **Validation:** Repeat TASK-005 tests on real production and preview URLs.
 
-- [ ] **TASK-057 — Validate deployed concurrency, fallback, and recovery**
+- [x] **TASK-057 — Validate deployed concurrency, fallback, and recovery**
   - **Release:** V1 required
   - **Dependencies:** TASK-056
   - **Requirements:** NFR-005–NFR-009, AC-014–AC-017
@@ -576,7 +576,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Multiple judges remain isolated; refresh/return, fallback, deterministic mode, deletion, export, weather, and repair work publicly.
   - **Validation:** Concurrent Playwright/load run plus manual judge smoke checklist.
 
-- [ ] **TASK-058 — Maintain public availability through judging**
+- [x] **TASK-058 — Maintain public availability through judging**
   - **Release:** V1 required, operational
   - **Dependencies:** TASK-057
   - **Requirements:** DEPLOY-001–DEPLOY-004, METRIC-009
@@ -588,7 +588,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 21 — README and Codex collaboration documentation
 
-- [ ] **TASK-059 — Write repository setup, architecture, testing, and operation docs**
+- [x] **TASK-059 — Write repository setup, architecture, testing, and operation docs**
   - **Release:** V1 required
   - **Dependencies:** TASK-057
   - **Requirements:** DEPLOY-005–DEPLOY-007, OBS-006
@@ -596,7 +596,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** A reviewer can access or clone the repository, run tests, start locally, understand modes, and reproduce the demo.
   - **Validation:** Fresh-machine documentation walkthrough; every documented command succeeds.
 
-- [ ] **TASK-060 — Document Codex acceleration and human decisions**
+- [x] **TASK-060 — Document Codex acceleration and human decisions**
   - **Release:** V1 required
   - **Dependencies:** TASK-059
   - **Requirements:** Hackathon documentation requirement

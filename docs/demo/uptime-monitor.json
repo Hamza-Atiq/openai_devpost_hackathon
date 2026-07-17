@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "interval_seconds": 300,
+  "timeout_seconds": 15,
+  "checks": [
+    {"name": "public-app", "url": "https://crickops.vercel.app/", "expected_status": 200},
+    {"name": "api-live", "url": "https://crickops-api-production.up.railway.app/health/live", "expected_status": 200},
+    {"name": "api-ready", "url": "https://crickops-api-production.up.railway.app/health/ready", "expected_status": 200}
+  ]
+}
+

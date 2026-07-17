@@ -22,7 +22,7 @@ members = ["apps/api"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers"
-pythonpath = ["apps/api"]
+pythonpath = [".", "apps/api"]
 testpaths = ["apps/api/tests"]
 
 [tool.ruff]
