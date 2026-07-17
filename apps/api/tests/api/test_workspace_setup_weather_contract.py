@@ -161,3 +161,47 @@ def test_deterministic_weather_activation_survives_live_unavailability() -> None
     assert activated.status_code == 200
     assert activated.json()["mode"] == "deterministic"
     assert weather.json()["scenario_id"] == "rain-threshold-v1"
+
+
+def test_weather_threshold_stays_proposed_until_explicit_confirmation() -> None:
+    client = TestClient(create_app(), base_url="https://testserver")
+    created = client.post(
+        "/api/v1/workspaces", json={"sample_id": "global-community-cup"}
+    ).json()
+    revision = created["tournament"]["revision"]
+    client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": revision,
+            "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+        },
+    )
+    proposal = client.post(
+        "/api/v1/weather/thresholds",
+        json={"metric": "precipitation_probability", "value": 70},
+    )
+    before = client.get("/api/v1/workspace").json()
+
+    assert proposal.status_code == 200
+    assert proposal.json()["status"] == "proposed"
+    assert "weather_threshold" not in before["constraint_confirmation"]["selection"]
+
+    confirmed = client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": before["tournament"]["revision"],
+            "selection": {
+                "weather_threshold": {
+                    "metric": "precipitation_probability",
+                    "value": 70,
+                }
+            },
+        },
+    )
+    after = client.get("/api/v1/workspace").json()
+
+    assert confirmed.status_code == 200
+    assert after["constraint_confirmation"]["selection"]["match_format_preset"] == "T20"
+    assert after["constraint_confirmation"]["selection"]["weather_threshold"]["value"] == 70

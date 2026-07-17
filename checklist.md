@@ -450,7 +450,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Null risk remains unknown; coverage and issue time are visible; color is not sole signal.
   - **Validation:** Component tests cover full/partial/zero/stale coverage and attribution.
 
-- [ ] **TASK-044 — Build deterministic/live mode controls and threshold confirmation**
+- [x] **TASK-044 — Build deterministic/live mode controls and threshold confirmation**
   - **Release:** V1 required
   - **Dependencies:** TASK-025, TASK-043
   - **Requirements:** WEATHER-002, WEATHER-004–WEATHER-007, APPROVAL-006

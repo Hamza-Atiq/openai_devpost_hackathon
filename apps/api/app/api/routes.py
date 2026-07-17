@@ -33,6 +33,16 @@ class WeatherRefreshInput(DomainModel):
     venue_ids: tuple[str, ...] = ()
 
 
+class WeatherThresholdInput(DomainModel):
+    metric: Literal[
+        "precipitation_probability",
+        "temperature_max_c",
+        "temperature_min_c",
+        "wind_speed_kmh",
+    ]
+    value: float
+
+
 class GenericPayload(DomainModel):
     payload: Mapping[str, Any] = {}
 
@@ -260,14 +270,20 @@ def build_v1_router(store: GuestWorkspaceStore) -> APIRouter:
         workspace.tournament = workspace.tournament.model_copy(
             update={"status": TournamentStatus.READY_TO_SCHEDULE, "revision": next_revision}
         )
+        previous_selection = (
+            dict(workspace.constraint_confirmation.get("selection", {}))
+            if workspace.constraint_confirmation is not None
+            else {}
+        )
+        previous_selection.update(body.selection)
         workspace.constraint_confirmation = {
-            "selection": dict(body.selection),
+            "selection": previous_selection,
             "confirmed_revision": next_revision,
         }
         return {
             "status": TournamentStatus.READY_TO_SCHEDULE,
             "revision": next_revision,
-            "selection": body.selection,
+            "selection": previous_selection,
         }
 
     @router.post("/constraints/reject")
@@ -340,10 +356,18 @@ def build_v1_router(store: GuestWorkspaceStore) -> APIRouter:
 
     @router.post("/weather/thresholds")
     def propose_weather_threshold(
-        body: dict[str, Any],
+        body: WeatherThresholdInput,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ) -> dict[str, object]:
-        del workspace
-        return {"status": "proposed", "classification": "hard", "threshold": body}
+        if body.metric == "precipitation_probability" and not 0 <= body.value <= 100:
+            raise APIProblem(
+                status=422,
+                code="invalid_weather_threshold",
+                title="Invalid weather threshold",
+                detail="Precipitation probability must be between 0 and 100.",
+            )
+        proposal = body.model_dump(exclude={"schema_version"})
+        workspace.weather["threshold_proposal"] = proposal
+        return {"status": "proposed", "classification": "hard", "threshold": proposal}
 
     return router

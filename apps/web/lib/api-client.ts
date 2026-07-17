@@ -10,7 +10,15 @@ export type ProblemDetails = {
 
 export type WorkspaceView = {
   workspace_id: string;
-  tournament: { name: string } | null;
+  tournament: { name: string; revision?: number } | null;
+  weather?: WeatherStatus;
+};
+
+export type WeatherStatus = {
+  mode: "live" | "deterministic";
+  quality: string;
+  scenario_id?: string | null;
+  guidance?: string;
 };
 
 export type ConfirmSetupInput = {
@@ -96,6 +104,10 @@ export class CrickOpsApiClient {
     return payload as WorkspaceView;
   }
 
+  async getWorkspace(): Promise<WorkspaceView> {
+    return this.get<WorkspaceView>("/api/v1/workspace");
+  }
+
   async confirmSetup(input: ConfirmSetupInput): Promise<SetupPrecheck> {
     await this.request("/api/v1/constraints/confirm", input);
     return this.request<SetupPrecheck>("/api/v1/tournament/precheck", {});
@@ -122,6 +134,35 @@ export class CrickOpsApiClient {
       { confirmation: true },
       { "Idempotency-Key": crypto.randomUUID() },
     );
+  }
+
+  async refreshWeather(mode: "live" | "deterministic"): Promise<WeatherStatus> {
+    return this.request<WeatherStatus>("/api/v1/weather/refresh", { mode });
+  }
+
+  async activateRainDemo(): Promise<WeatherStatus> {
+    return this.request<WeatherStatus>(
+      "/api/v1/weather/demo-scenarios/rain-threshold-v1/activate",
+      { confirmation: true },
+    );
+  }
+
+  async proposeWeatherThreshold(metric: string, value: number) {
+    return this.request<{ status: "proposed"; threshold: { metric: string; value: number } }>(
+      "/api/v1/weather/thresholds",
+      { metric, value },
+    );
+  }
+
+  async confirmWeatherThreshold(metric: string, value: number): Promise<number> {
+    const workspace = await this.getWorkspace();
+    if (workspace.tournament?.revision === undefined) throw new Error("Tournament revision is unavailable.");
+    const confirmed = await this.request<{ revision: number }>("/api/v1/constraints/confirm", {
+      confirmation: true,
+      expected_revision: workspace.tournament.revision,
+      selection: { weather_threshold: { metric, value } },
+    });
+    return confirmed.revision;
   }
 
   private async request<T = unknown>(
