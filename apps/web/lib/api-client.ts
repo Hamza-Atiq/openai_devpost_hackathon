@@ -88,6 +88,18 @@ export type FeedbackReason =
   | "travel_concern"
   | "other";
 
+const CSRF_COOKIE = "__Host-crickops_csrf";
+
+function csrfHeaders(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const token = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${CSRF_COOKIE}=`))
+    ?.slice(CSRF_COOKIE.length + 1);
+  return token ? { "X-CSRF-Token": decodeURIComponent(token) } : {};
+}
+
 export class ApiProblemError extends Error {
   readonly code: string;
   readonly status: number;
@@ -124,6 +136,14 @@ export class CrickOpsApiClient {
 
   async getWorkspace(): Promise<WorkspaceView> {
     return this.get<WorkspaceView>("/api/v1/workspace");
+  }
+
+  async resetWorkspace(sampleId = "global-community-cup"): Promise<WorkspaceView> {
+    return this.request<WorkspaceView>("/api/v1/workspace/reset", { sample_id: sampleId });
+  }
+
+  async deleteWorkspace(): Promise<void> {
+    await this.request("/api/v1/workspace", { confirmation: true }, {}, "DELETE");
   }
 
   async confirmSetup(input: ConfirmSetupInput): Promise<SetupPrecheck> {
@@ -197,7 +217,12 @@ export class CrickOpsApiClient {
   async rejectSchedule(draftId: string): Promise<void> {
     const response = await this.fetcher(
       `/api/v1/schedule-drafts/${encodeURIComponent(draftId)}/reject`,
-      { method: "POST", credentials: "same-origin", cache: "no-store" },
+      {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: csrfHeaders(),
+      },
     );
     if (!response.ok) throw new ApiProblemError((await response.json()) as ProblemDetails);
   }
@@ -234,12 +259,13 @@ export class CrickOpsApiClient {
     path: string,
     body: object,
     headers: Record<string, string> = {},
+    method = "POST",
   ): Promise<T> {
     const response = await this.fetcher(path, {
-      method: "POST",
+      method,
       credentials: "same-origin",
       cache: "no-store",
-      headers: { "Content-Type": "application/json", ...headers },
+      headers: { "Content-Type": "application/json", ...csrfHeaders(), ...headers },
       body: JSON.stringify(body),
     });
     const payload: unknown = await response.json();

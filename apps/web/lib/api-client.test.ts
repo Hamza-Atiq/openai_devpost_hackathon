@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CrickOpsApiClient } from "./api-client";
 
 describe("CrickOpsApiClient", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("creates a sample workspace with private same-origin credentials", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(
@@ -155,6 +157,40 @@ describe("CrickOpsApiClient", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ reason: "venue_preference", note: "Prefer Riverside Oval." }),
+      }),
+    );
+  });
+
+  it("sends the double-submit CSRF token on workspace mutations", async () => {
+    vi.stubGlobal("document", {
+      cookie: "theme=dark; __Host-crickops_csrf=csrf-token-123; locale=en",
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "ready_to_schedule", revision: 4 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ready: true, violations: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    await new CrickOpsApiClient(fetcher).confirmSetup({
+      confirmation: true,
+      expected_revision: 3,
+      selection: { match_format_preset: "T20", allocation_minutes: 240 },
+    });
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/constraints/confirm",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-CSRF-Token": "csrf-token-123" }),
       }),
     );
   });

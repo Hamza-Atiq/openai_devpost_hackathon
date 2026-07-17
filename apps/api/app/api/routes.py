@@ -12,6 +12,11 @@ from app.api.workspace import GuestWorkspace, GuestWorkspaceStore
 from app.domain.common import DomainModel
 from app.domain.samples import available_samples, load_sample
 from app.limits.public_demo import PublicDemoProtection, UsageAction
+from app.security.csrf import (
+    CSRF_COOKIE_NAME,
+    validate_bootstrap_origin,
+    validate_workspace_mutation,
+)
 
 if TYPE_CHECKING:
     from app.api.operations import OperationsState
@@ -89,6 +94,7 @@ def require_workspace(
             title="Guest workspace required",
             detail="Create or restore a guest workspace before using this route.",
         )
+    validate_workspace_mutation(request, workspace.csrf_token)
     return workspace
 
 
@@ -111,7 +117,12 @@ def build_v1_router(
         ]
 
     @router.post("/workspaces", status_code=status.HTTP_201_CREATED)
-    def create_workspace(body: CreateWorkspaceInput, response: Response) -> dict[str, object]:
+    def create_workspace(
+        body: CreateWorkspaceInput,
+        request: Request,
+        response: Response,
+    ) -> dict[str, object]:
+        validate_bootstrap_origin(request)
         token, workspace = store.create(_load_requested_sample(body.sample_id))
         response.set_cookie(
             COOKIE_NAME,
@@ -119,6 +130,14 @@ def build_v1_router(
             secure=True,
             httponly=True,
             samesite="lax",
+            path="/",
+        )
+        response.set_cookie(
+            CSRF_COOKIE_NAME,
+            workspace.csrf_token,
+            secure=True,
+            httponly=False,
+            samesite="strict",
             path="/",
         )
         return _workspace_view(workspace)
@@ -143,6 +162,7 @@ def build_v1_router(
             )
         store.delete(guest_token)
         response.delete_cookie(COOKIE_NAME, secure=True, httponly=True, path="/")
+        response.delete_cookie(CSRF_COOKIE_NAME, secure=True, httponly=False, path="/")
         return {"status": "deletion_accepted"}
 
     @router.post("/workspace/reset")

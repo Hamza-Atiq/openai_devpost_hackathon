@@ -524,7 +524,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
   - **Expected output:** Feasible, infeasible, format, overlap, knockout, weather, repair, provider, and feedback cases have versioned expected results.
   - **Validation:** Evaluation runner reports 100% hard-valid displayed results and 100% seeded infeasible blocking.
 
-- [ ] **TASK-052 — Complete accessibility and security test suites**
+- [x] **TASK-052 — Complete accessibility and security test suites**
   - **Release:** V1 required
   - **Dependencies:** TASK-048, TASK-050
   - **Requirements:** ACCESS-001–ACCESS-006, SEC-001–SEC-009, METRIC-006, METRIC-011

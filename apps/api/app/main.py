@@ -24,8 +24,18 @@ def create_app(
     install_sdk_tracing: bool = False,
     demo_protection: PublicDemoProtection | None = None,
     server_settings: ServerSettings | None = None,
+    csrf_required: bool | None = None,
 ) -> FastAPI:
     application = FastAPI(title="CrickOps AI API")
+    runtime_probe_config = probe_config or SessionProbeConfig.from_env()
+    application.state.allowed_origins = frozenset(runtime_probe_config.allowed_origins)
+    application.state.csrf_required = (
+        csrf_required
+        if csrf_required is not None
+        else bool(
+            server_settings and server_settings.environment.value in {"preview", "production"}
+        )
+    )
     application.state.observability = ObservabilityRecorder()
     if install_sdk_tracing:
         application.state.sdk_trace_processor = MinimalLocalTraceProcessor(
@@ -59,9 +69,7 @@ def create_app(
         build_schedule_router(application.state.operations, application.state.demo_protection)
     )
     application.include_router(build_operations_router(application.state.operations))
-    application.include_router(
-        build_session_probe_router(probe_config or SessionProbeConfig.from_env())
-    )
+    application.include_router(build_session_probe_router(runtime_probe_config))
 
     @application.middleware("http")
     async def private_workspace_cache_control(request: Request, call_next):

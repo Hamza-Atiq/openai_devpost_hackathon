@@ -13,6 +13,7 @@ from app.domain.tournament import TournamentConfig
 class GuestWorkspace:
     workspace_id: str
     tournament: TournamentConfig | None
+    csrf_token: str = field(default_factory=lambda: secrets.token_urlsafe(32), repr=False)
     weather: dict[str, Any] = field(
         default_factory=lambda: {
             "mode": "live",

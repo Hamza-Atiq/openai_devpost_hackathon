@@ -21,6 +21,9 @@ describe("accessible workspace entry", () => {
     expect(markup).toContain('aria-label="Workspace navigation"');
     expect(markup).toContain('aria-label="Tournament Director"');
     expect(markup).toContain('id="main-content"');
+    expect(markup).toContain("Export tournament");
+    expect(markup).toContain("Reset demo");
+    expect(markup).toContain("Delete workspace");
   });
 
   it("offers both samples, a blank workspace, and the privacy boundary", () => {

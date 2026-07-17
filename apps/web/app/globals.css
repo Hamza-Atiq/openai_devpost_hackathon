@@ -228,6 +228,12 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .director-status { margin: 0; color: var(--muted); font-size: .76rem; }
 .director-message { margin: 1.5rem 0; padding: 1rem; background: var(--mist); line-height: 1.55; font-size: .9rem; }
 .quiet-button { width: 100%; padding: .75rem; color: var(--boundary); background: transparent; border: 1px solid var(--boundary); font-weight: 800; }
+.workspace-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .75rem; }
+.workspace-actions a, .workspace-actions button { min-height: 44px; padding: .65rem .7rem; border: 1px solid var(--line); background: transparent; color: var(--pitch-ink); font-size: .72rem; font-weight: 750; text-align: center; text-decoration: none; cursor: pointer; }
+.workspace-actions a { grid-column: 1 / -1; display: grid; place-items: center; border-color: var(--boundary); color: var(--boundary); }
+.workspace-actions button:last-child { color: #8a3025; border-color: #b96a5e; }
+.workspace-actions button:disabled { cursor: wait; opacity: .6; }
+.director-action-status { margin: .65rem 0 0; color: var(--muted); font-size: .68rem; line-height: 1.45; }
 .setup-intro { max-width: 900px; }
 .setup-intro h1 { margin: 0; font-size: clamp(2.8rem, 6vw, 5.4rem); text-transform: uppercase; }
 .setup-intro > p:last-of-type { color: var(--muted); max-width: 680px; line-height: 1.6; }
