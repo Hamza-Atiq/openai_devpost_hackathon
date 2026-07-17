@@ -16,6 +16,7 @@ from app.observability.dependency_health import (
     DependencyHealthRegistry,
     DependencyStatus,
 )
+from app.observability.recorder import observe
 
 
 class ProviderOperationError(RuntimeError):
@@ -151,6 +152,16 @@ class AgentResilienceManager:
                     consecutive_failures=0,
                     checked_at=self._clock(),
                 )
+                observe(
+                    component="provider",
+                    event="dependency_transition",
+                    outcome="healthy",
+                    metadata={
+                        "provider": route.provider,
+                        "model": route.model,
+                        "circuit_state": breaker.state,
+                    },
+                )
                 return decision, attempts, None
 
             breaker.failure(self._clock())
@@ -166,6 +177,17 @@ class AgentResilienceManager:
                 consecutive_failures=breaker.consecutive_failures,
                 checked_at=self._clock(),
                 detail=type(last_error).__name__,
+            )
+            observe(
+                component="provider",
+                event="dependency_transition",
+                outcome=status,
+                metadata={
+                    "provider": route.provider,
+                    "model": route.model,
+                    "circuit_state": breaker.state,
+                    "error_type": type(last_error).__name__,
+                },
             )
             transient = isinstance(last_error, TransientProviderError)
             if not transient or breaker.state is CircuitState.OPEN or retry == self._max_retries:
@@ -186,7 +208,7 @@ class AgentResilienceManager:
             attempt_count += attempts
             if decision is not None:
                 transitions.append("primary_active")
-                return ResilientAgentResult(
+                result = ResilientAgentResult(
                     mode=primary.mode,
                     provider=primary.provider,
                     model=primary.model,
@@ -194,6 +216,18 @@ class AgentResilienceManager:
                     attempt_count=attempt_count,
                     transitions=tuple(transitions),
                 )
+                observe(
+                    component="agent",
+                    event="provider_route",
+                    outcome=result.mode,
+                    metadata={
+                        "provider": result.provider,
+                        "model": result.model,
+                        "attempt_count": result.attempt_count,
+                        "transitions": result.transitions,
+                    },
+                )
+                return result
         else:
             transitions.append("primary_circuit_open")
 
@@ -210,7 +244,7 @@ class AgentResilienceManager:
                 attempt_count += attempts
                 if decision is not None:
                     transitions.append("fallback_active")
-                    return ResilientAgentResult(
+                    result = ResilientAgentResult(
                         mode=fallback.mode,
                         provider=fallback.provider,
                         model=fallback.model,
@@ -218,9 +252,21 @@ class AgentResilienceManager:
                         attempt_count=attempt_count,
                         transitions=tuple(transitions),
                     )
+                    observe(
+                        component="agent",
+                        event="provider_route",
+                        outcome=result.mode,
+                        metadata={
+                            "provider": result.provider,
+                            "model": result.model,
+                            "attempt_count": result.attempt_count,
+                            "transitions": result.transitions,
+                        },
+                    )
+                    return result
 
         transitions.append("deterministic_active")
-        return ResilientAgentResult(
+        result = ResilientAgentResult(
             mode=AgentMode.DETERMINISTIC,
             deterministic=self._router.deterministic_result(
                 "Conversational interpretation and narrative explanations are unavailable."
@@ -228,3 +274,16 @@ class AgentResilienceManager:
             attempt_count=attempt_count,
             transitions=tuple(transitions),
         )
+        observe(
+            component="agent",
+            event="provider_route",
+            outcome=result.mode,
+            metadata={
+                "provider": None,
+                "model": None,
+                "attempt_count": result.attempt_count,
+                "transitions": result.transitions,
+                "fabricated_response": False,
+            },
+        )
+        return result

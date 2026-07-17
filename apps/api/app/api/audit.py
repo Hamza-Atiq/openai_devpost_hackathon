@@ -5,6 +5,9 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
+from app.observability.context import current_correlation_id
+from app.observability.recorder import observe
+
 
 class AuditEventStore(Protocol):
     audit_events: dict[str, list[Mapping[str, Any]]]
@@ -19,14 +22,20 @@ def append_audit_event(
     structured_payload: Mapping[str, Any] | None = None,
     actor_type: str = "organizer",
 ) -> None:
-    state.audit_events.setdefault(workspace_id, []).append(
-        {
-            "id": str(uuid4()),
-            "actor_type": actor_type,
-            "event_type": event_type,
-            "summary": summary,
-            "structured_payload": dict(structured_payload or {}),
-            "occurred_at": datetime.now(UTC).isoformat(),
-            "agent_provenance": None,
-        }
+    event = {
+        "id": str(uuid4()),
+        "actor_type": actor_type,
+        "event_type": event_type,
+        "summary": summary,
+        "structured_payload": dict(structured_payload or {}),
+        "occurred_at": datetime.now(UTC).isoformat(),
+        "agent_provenance": None,
+        "correlation_id": current_correlation_id(),
+    }
+    state.audit_events.setdefault(workspace_id, []).append(event)
+    observe(
+        component="audit",
+        event=event_type,
+        outcome="recorded",
+        metadata={"actor_type": actor_type, "workspace_id": workspace_id},
     )

@@ -13,6 +13,8 @@ from app.agents.guarded_tool import (
     guard_function_tool,
 )
 from app.agents.schemas import AgentRole, ToolOutcomeStatus
+from app.observability.context import observation_scope
+from app.observability.recorder import ObservabilityRecorder
 from pydantic import BaseModel
 
 
@@ -46,15 +48,31 @@ def _tool_context(context: AgentToolContext) -> SimpleNamespace:
 def test_authorized_tool_records_traceable_validated_outcome() -> None:
     context = _context(AgentRole.SCHEDULING_STRATEGY)
     guarded = guard_function_tool(solve_schedule, POLICY)
+    recorder = ObservabilityRecorder()
 
-    output = asyncio.run(
-        guarded.on_invoke_tool(_tool_context(context), '{"request": {"tournament_revision": 3}}')
-    )
+    with observation_scope("018f6c7a-9a4b-7c1d-8e2f-123456789abc", recorder):
+        output = asyncio.run(
+            guarded.on_invoke_tool(
+                _tool_context(context),
+                '{"request": {"tournament_revision": 3}}',
+            )
+        )
 
     assert str(output).startswith("validated:3")
     assert context.tool_outcomes[0].tool_name == "solve_schedule"
     assert context.tool_outcomes[0].status is ToolOutcomeStatus.VALIDATED
     assert context.tool_outcomes[0].deterministic_authority is True
+    tool_record = recorder.records_for("018f6c7a-9a4b-7c1d-8e2f-123456789abc")[0]
+    assert tool_record.component == "tool"
+    assert tool_record.outcome == "validated"
+    assert tool_record.metadata == {
+        "tool_name": "solve_schedule",
+        "role": "scheduling_strategy",
+        "provider": "openai",
+        "model": "gpt-5.6",
+        "deterministic_authority": True,
+    }
+    assert "tournament_revision" not in str(tool_record.metadata)
 
 
 def test_unauthorized_role_cannot_invoke_tool() -> None:

@@ -498,7 +498,7 @@ environment-bound cookie tests and will be repeated on live preview in TASK-056.
 
 ## Milestone 18 — Tracing and observability
 
-- [ ] **TASK-049 — Implement trace correlation, redaction, logs, and metrics**
+- [x] **TASK-049 — Implement trace correlation, redaction, logs, and metrics**
   - **Release:** V1 required
   - **Dependencies:** TASK-026, TASK-034
   - **Requirements:** OBS-001–OBS-006, SEC-005, NFR-009, NFR-011

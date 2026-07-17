@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from uuid import uuid4
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import Field, ValidationError
 
 from app.domain.common import DomainModel
+from app.observability.context import current_correlation_id
 
 
 class ProblemDetails(DomainModel):
@@ -37,7 +36,7 @@ class APIProblem(Exception):
             status=status,
             code=code,
             detail=detail,
-            correlation_id=str(uuid4()),
+            correlation_id=current_correlation_id(),
             retryable=retryable,
         )
 
@@ -74,7 +73,7 @@ def install_problem_handlers(app: FastAPI) -> None:
                 }
                 for item in error.errors()
             ),
-            correlation_id=str(uuid4()),
+            correlation_id=current_correlation_id(),
             retryable=False,
         )
         return _response(problem)
@@ -98,7 +97,7 @@ def install_problem_handlers(app: FastAPI) -> None:
                 }
                 for item in error.errors()
             ),
-            correlation_id=str(uuid4()),
+            correlation_id=current_correlation_id(),
             retryable=False,
         )
         return _response(problem)

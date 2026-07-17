@@ -15,7 +15,9 @@ from app.agents.resilience import (
     TransientProviderError,
 )
 from app.agents.schemas import AgentMode
+from app.observability.context import observation_scope
 from app.observability.dependency_health import CircuitState, DependencyHealthRegistry
+from app.observability.recorder import ObservabilityRecorder
 
 
 class StubFallbackProvider(ModelProvider):
@@ -62,6 +64,7 @@ async def _no_sleep(_seconds: float) -> None:
 
 def test_transient_primary_failures_retry_then_use_fallback_with_visible_provenance() -> None:
     events: list[str] = []
+    recorder = ObservabilityRecorder()
 
     async def invoke(route):
         events.append(f"call:{route.provider}")
@@ -69,14 +72,15 @@ def test_transient_primary_failures_retry_then_use_fallback_with_visible_provena
             raise TransientProviderError("temporary 503")
         return _decision(route.provider, route.model)
 
-    result = asyncio.run(
-        AgentResilienceManager(
-            router=_router(),
-            health=DependencyHealthRegistry(),
-            sleep=_no_sleep,
-            retry_jitter=lambda: 0,
-        ).run(invoke)
-    )
+    with observation_scope("018f6c7a-9a4b-7c1d-8e2f-123456789abc", recorder):
+        result = asyncio.run(
+            AgentResilienceManager(
+                router=_router(),
+                health=DependencyHealthRegistry(),
+                sleep=_no_sleep,
+                retry_jitter=lambda: 0,
+            ).run(invoke)
+        )
 
     assert events == ["call:openai"] * 3 + ["call:configured-fallback"]
     assert result.mode is AgentMode.FALLBACK_MODEL
@@ -84,6 +88,11 @@ def test_transient_primary_failures_retry_then_use_fallback_with_visible_provena
     assert result.model == "provider-model-v1"
     assert result.decision is not None
     assert result.attempt_count == 4
+    agent_records = recorder.records_for("018f6c7a-9a4b-7c1d-8e2f-123456789abc")
+    assert agent_records[-1].component == "agent"
+    assert agent_records[-1].outcome == "fallback-model"
+    assert agent_records[-1].metadata["provider"] == "configured-fallback"
+    assert agent_records[-1].metadata["attempt_count"] == 4
 
 
 def test_all_provider_outages_return_non_fabricated_deterministic_mode() -> None:

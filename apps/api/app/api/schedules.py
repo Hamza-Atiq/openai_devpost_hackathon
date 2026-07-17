@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from time import perf_counter
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -19,6 +20,7 @@ from app.domain.matches import MatchDefinition, MatchStage
 from app.domain.schedules import ScheduleMetrics, ScheduleProfile
 from app.domain.venues import SlotAvailability
 from app.fairness.evaluator import evaluate_schedule_metrics
+from app.observability.recorder import observe
 from app.optimization.config import load_optimization_config
 from app.scheduling.comparison import compare_profile_options
 from app.scheduling.diff import build_schedule_diff
@@ -54,15 +56,18 @@ class ApprovalInput(DomainModel):
 
 
 class ScheduleFeedbackInput(DomainModel):
-    reason: Literal[
-        "weather_preference",
-        "unfair_rest_distribution",
-        "venue_preference",
-        "unsuitable_time_slot",
-        "rivalry_requirement",
-        "travel_concern",
-        "other",
-    ] | None = None
+    reason: (
+        Literal[
+            "weather_preference",
+            "unfair_rest_distribution",
+            "venue_preference",
+            "unsuitable_time_slot",
+            "rivalry_requirement",
+            "travel_concern",
+            "other",
+        ]
+        | None
+    ) = None
     note: str | None = Field(default=None, max_length=500)
 
 
@@ -119,9 +124,7 @@ def _eligibility(workspace: GuestWorkspace):
         return (), {}
     matches = generate_match_graph(tournament)
     available_slot_ids = frozenset(
-        slot.id
-        for slot in tournament.slots
-        if slot.availability is SlotAvailability.AVAILABLE
+        slot.id for slot in tournament.slots if slot.availability is SlotAvailability.AVAILABLE
     )
     if len(available_slot_ids) < 15:
         return matches, {match.id: frozenset() for match in matches}
@@ -274,6 +277,16 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 detail="Request the Custom profile when custom priorities are supplied.",
             )
         matches, eligibility = _eligibility(workspace)
+        observe(
+            component="weather",
+            event="risk_snapshot_read",
+            outcome=str(workspace.weather.get("quality", "unknown")),
+            metadata={
+                "mode": workspace.weather.get("mode", "deterministic"),
+                "scenario_id": workspace.weather.get("scenario_id"),
+            },
+        )
+        solver_started = perf_counter()
         batch = generate_profile_options(
             workspace.tournament,
             matches,
@@ -286,6 +299,32 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
                 if body.custom_priorities is not None
                 else None
             ),
+        )
+        solver_duration_ms = round((perf_counter() - solver_started) * 1000, 3)
+        observe(
+            component="solver",
+            event="profile_generation",
+            outcome="infeasible" if batch.failures else "success",
+            metadata={
+                "profile_count": len(batch.options),
+                "failure_count": len(batch.failures),
+                "duration_ms": solver_duration_ms,
+            },
+        )
+        observe(
+            component="validator",
+            event="profile_batch",
+            outcome=(
+                "valid"
+                if batch.options and all(option.validation_report.valid for option in batch.options)
+                else "invalid"
+            ),
+            metadata={
+                "validated_count": len(batch.options),
+                "invalid_count": sum(
+                    not option.validation_report.valid for option in batch.options
+                ),
+            },
         )
         if batch.failures:
             raise APIProblem(
@@ -315,6 +354,12 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             "options": options,
         }
         workspace.schedule_runs[run_id] = run
+        observe(
+            component="database",
+            event="schedule_run_saved",
+            outcome="success",
+            metadata={"run_id": run_id, "draft_count": len(options)},
+        )
         if operations is not None:
             append_audit_event(
                 operations,
@@ -492,6 +537,25 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             "approved_at": datetime.now(UTC).isoformat(),
         }
         workspace.official_versions.append(version)
+        observe(
+            component="approval",
+            event="schedule_approved",
+            outcome="success",
+            metadata={"draft_id": draft_id, "version_number": version["version_number"]},
+        )
+        observe(
+            component="database",
+            event="schedule_version_saved",
+            outcome="success",
+            metadata={"version_id": version["version_id"]},
+        )
+        if repair_diff is not None:
+            observe(
+                component="hero",
+                event="repaired_schedule_approved",
+                outcome="success",
+                metadata={"version_number": version["version_number"]},
+            )
         if operations is not None:
             append_audit_event(
                 operations,
@@ -703,12 +767,39 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             )
             for match in matches
         }
+        solver_started = perf_counter()
         result = repair_schedule(
             repaired_tournament,
             matches,
             baseline.placements,
             eligible,
             generated_at=datetime.now(UTC),
+        )
+        observe(
+            component="solver",
+            event="minimum_change_repair",
+            outcome=result.status,
+            metadata={
+                "duration_ms": round((perf_counter() - solver_started) * 1000, 3),
+                "unavailable_slot_count": len(unavailable),
+                "changed_count": len(result.changed_match_ids),
+            },
+        )
+        observe(
+            component="validator",
+            event="repair",
+            outcome=(
+                "valid"
+                if result.validation_report is not None and result.validation_report.valid
+                else "invalid"
+            ),
+            metadata={
+                "violation_count": (
+                    len(result.validation_report.violations)
+                    if result.validation_report is not None
+                    else None
+                )
+            },
         )
         if result.status is RepairStatus.INFEASIBLE or result.validation_report is None:
             raise APIProblem(
@@ -738,6 +829,12 @@ def build_schedule_router(operations: OperationsState | None = None) -> APIRoute
             draft_metrics=repaired.metrics,
         )
         workspace.schedule_diffs[draft_id] = diff.model_dump(mode="json")
+        observe(
+            component="database",
+            event="repair_draft_saved",
+            outcome="success",
+            metadata={"draft_id": draft_id, "moved_count": len(diff.moved)},
+        )
         if operations is not None:
             append_audit_event(
                 operations,

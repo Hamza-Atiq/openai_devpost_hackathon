@@ -1,3 +1,4 @@
+from agents.tracing import add_trace_processor
 from fastapi import FastAPI, Request
 
 from app.agents.schemas import AgentMode
@@ -6,11 +7,25 @@ from app.api.problems import install_problem_handlers
 from app.api.routes import build_v1_router
 from app.api.schedules import build_schedule_router
 from app.api.workspace import GuestWorkspaceStore
+from app.observability.middleware import install_observability_middleware
+from app.observability.recorder import ObservabilityRecorder
+from app.observability.trace_processor import MinimalLocalTraceProcessor
 from app.session_probe import SessionProbeConfig, build_session_probe_router
 
 
-def create_app(*, probe_config: SessionProbeConfig | None = None) -> FastAPI:
+def create_app(
+    *,
+    probe_config: SessionProbeConfig | None = None,
+    install_sdk_tracing: bool = False,
+) -> FastAPI:
     application = FastAPI(title="CrickOps AI API")
+    application.state.observability = ObservabilityRecorder()
+    if install_sdk_tracing:
+        application.state.sdk_trace_processor = MinimalLocalTraceProcessor(
+            application.state.observability
+        )
+        add_trace_processor(application.state.sdk_trace_processor)
+    install_observability_middleware(application, application.state.observability)
     install_problem_handlers(application)
     application.state.workspace_store = GuestWorkspaceStore()
     application.state.operations = OperationsState(mode=AgentMode.DETERMINISTIC)
@@ -38,4 +53,4 @@ def create_app(*, probe_config: SessionProbeConfig | None = None) -> FastAPI:
     return application
 
 
-app = create_app()
+app = create_app(install_sdk_tracing=True)

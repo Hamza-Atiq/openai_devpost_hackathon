@@ -13,6 +13,7 @@ from app.agents.schemas import (
     ToolOutcomeStatus,
     ValidationStatus,
 )
+from app.observability.recorder import observe
 
 
 class ToolAuthorizationError(PermissionError):
@@ -53,6 +54,13 @@ def guard_function_tool(tool: FunctionTool, policy: GuardedToolPolicy) -> Functi
         execution_context = context.context
         if not isinstance(execution_context, AgentToolContext):
             raise ToolAuthorizationError("guarded tool requires an AgentToolContext")
+        metadata = {
+            "tool_name": tool.name,
+            "role": execution_context.role,
+            "provider": execution_context.provider,
+            "model": execution_context.model,
+            "deterministic_authority": policy.deterministic_authority,
+        }
         if execution_context.role not in policy.authorized_roles:
             execution_context.tool_outcomes.append(
                 ToolOutcome(
@@ -63,6 +71,7 @@ def guard_function_tool(tool: FunctionTool, policy: GuardedToolPolicy) -> Functi
                     detail="role is not authorized for this tool",
                 )
             )
+            observe(component="tool", event="invoke", outcome="rejected", metadata=metadata)
             raise ToolAuthorizationError(
                 f"{execution_context.role} is not authorized to invoke {tool.name}"
             )
@@ -78,6 +87,12 @@ def guard_function_tool(tool: FunctionTool, policy: GuardedToolPolicy) -> Functi
                     detail=type(error).__name__,
                 )
             )
+            observe(
+                component="tool",
+                event="invoke",
+                outcome="error",
+                metadata={**metadata, "error_type": type(error).__name__},
+            )
             raise
         if not policy.output_validator(output):
             execution_context.tool_outcomes.append(
@@ -90,6 +105,7 @@ def guard_function_tool(tool: FunctionTool, policy: GuardedToolPolicy) -> Functi
                     detail="tool output failed deterministic validation",
                 )
             )
+            observe(component="tool", event="invoke", outcome="rejected", metadata=metadata)
             raise ToolValidationError(f"{tool.name} output failed validation")
         execution_context.tool_outcomes.append(
             ToolOutcome(
@@ -100,6 +116,7 @@ def guard_function_tool(tool: FunctionTool, policy: GuardedToolPolicy) -> Functi
                 output_digest=_digest(output),
             )
         )
+        observe(component="tool", event="invoke", outcome="validated", metadata=metadata)
         return output
 
     return replace(tool, on_invoke_tool=guarded_invoke)

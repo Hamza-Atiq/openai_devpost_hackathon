@@ -93,15 +93,11 @@ def test_generation_passes_real_choices_and_weather_penalties_to_profiles(
 
     assert response.status_code == 202
     run = client.get(f"/api/v1/schedule-runs/{response.json()['run_id']}").json()
-    metrics_by_profile = {
-        option["profile"]: option["metrics"] for option in run["options"]
-    }
+    metrics_by_profile = {option["profile"]: option["metrics"] for option in run["options"]}
     signatures = {
         tuple(
             (placement["match_id"], placement["slot_id"])
-            for placement in client.get(
-                f"/api/v1/schedule-drafts/{draft_id}"
-            ).json()["placements"]
+            for placement in client.get(f"/api/v1/schedule-drafts/{draft_id}").json()["placements"]
         )
         for draft_id in run["draft_ids"]
     }
@@ -112,8 +108,7 @@ def test_generation_passes_real_choices_and_weather_penalties_to_profiles(
     )
     eligibility = captured["eligibility"]
     assert all(
-        len(slot_ids) == len(workspace.tournament.slots)
-        for slot_ids in eligibility.values()
+        len(slot_ids) == len(workspace.tournament.slots) for slot_ids in eligibility.values()
     )
     penalties = captured["component_penalties"]
     assert penalties is not None
@@ -192,9 +187,11 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     disruption_type: str,
 ) -> None:
     client = client_with_sample()
+    correlation_id = "018f6c7a-9a4b-7c1d-8e2f-123456789abc"
     workspace = client.get("/api/v1/workspace").json()
     confirmed = client.post(
         "/api/v1/constraints/confirm",
+        headers={"X-Correlation-ID": correlation_id},
         json={
             "confirmation": True,
             "expected_revision": workspace["tournament"]["revision"],
@@ -204,7 +201,10 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     assert confirmed.status_code == 200
     run_id = client.post(
         "/api/v1/schedule-runs",
-        headers={"Idempotency-Key": "generation-repair"},
+        headers={
+            "Idempotency-Key": "generation-repair",
+            "X-Correlation-ID": correlation_id,
+        },
         json={"profiles": ["balanced", "weather_first", "fairness_first"]},
     ).json()["run_id"]
     draft_ids = client.get(f"/api/v1/schedule-runs/{run_id}").json()["draft_ids"]
@@ -212,11 +212,15 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     draft = client.get(f"/api/v1/schedule-drafts/{draft_id}").json()
     official = client.post(
         f"/api/v1/schedule-drafts/{draft_id}/approve",
-        headers={"Idempotency-Key": "approval-repair"},
+        headers={
+            "Idempotency-Key": "approval-repair",
+            "X-Correlation-ID": correlation_id,
+        },
         json={"confirmation": True},
     ).json()
     disruption = client.post(
         "/api/v1/disruptions",
+        headers={"X-Correlation-ID": correlation_id},
         json={
             "type": disruption_type,
             "unavailable_slot_ids": [draft["placements"][-1]["slot_id"]],
@@ -224,7 +228,8 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     ).json()
 
     repair = client.post(
-        f"/api/v1/disruptions/{disruption['disruption_id']}/repair-runs"
+        f"/api/v1/disruptions/{disruption['disruption_id']}/repair-runs",
+        headers={"X-Correlation-ID": correlation_id},
     )
     diff = client.get(f"/api/v1/schedule-diffs/{repair.json()['draft_id']}")
 
@@ -258,7 +263,10 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
         return
     approved = client.post(
         f"/api/v1/schedule-drafts/{repair.json()['draft_id']}/approve",
-        headers={"Idempotency-Key": f"approve-repair-{disruption_type}"},
+        headers={
+            "Idempotency-Key": f"approve-repair-{disruption_type}",
+            "X-Correlation-ID": correlation_id,
+        },
         json={"confirmation": True},
     )
     replay = client.post(
@@ -279,6 +287,18 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
         "schedule_options_generated",
         "constraints_confirmed",
     ]
+    observations = client.app.state.observability.records_for(correlation_id)
+    assert {record.component for record in observations} >= {
+        "http",
+        "weather",
+        "solver",
+        "validator",
+        "database",
+        "approval",
+        "audit",
+        "hero",
+    }
+    assert client.app.state.observability.metric("hero_flow_success_total") == 1
     restored = client.post(
         f"/api/v1/schedule-versions/{official['version_id']}/restore",
         headers={"Idempotency-Key": "restore-original"},

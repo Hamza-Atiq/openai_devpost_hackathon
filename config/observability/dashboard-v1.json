@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "name": "CrickOps V1 Operations",
+  "panels": [
+    {
+      "title": "HTTP health",
+      "metrics": ["http_requests_total", "http_errors_total", "http_request_duration_ms"]
+    },
+    {
+      "title": "Scheduling authority",
+      "metrics": ["solver_runs_total", "solver_duration_ms", "validation_failures_total"]
+    },
+    {
+      "title": "Weather and providers",
+      "metrics": ["weather_fetches_total", "weather_freshness_seconds", "provider_fallbacks_total", "circuit_state"]
+    },
+    {
+      "title": "Agent evidence",
+      "metrics": ["agent_runs_total", "tool_invocations_total", "agent_schema_failures_total"]
+    },
+    {
+      "title": "Workspace outcomes",
+      "metrics": ["approvals_total", "approval_conflicts_total", "workspace_expirations_total", "hero_flow_success_total"]
+    }
+  ]
+}
