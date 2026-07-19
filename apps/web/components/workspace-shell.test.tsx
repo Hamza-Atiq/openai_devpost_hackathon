@@ -21,6 +21,10 @@ describe("accessible workspace entry", () => {
     expect(markup).toContain('aria-label="Workspace navigation"');
     expect(markup).toContain('aria-label="Tournament Director"');
     expect(markup).toContain('id="main-content"');
+    expect(markup).toContain('href="/workspace/recovery"');
+    expect(markup).toContain(">Recovery</a>");
+    expect(markup).toContain("Checking agent mode");
+    expect(markup).not.toContain('<span class="mode-pill">Deterministic mode</span>');
     expect(markup).toContain("Export tournament");
     expect(markup).toContain("Reset demo");
     expect(markup).toContain("Delete workspace");
