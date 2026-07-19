@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 
-import { CrickOpsApiClient } from "@/lib/api-client";
+import { ApiProblemError, CrickOpsApiClient } from "@/lib/api-client";
 
 type AffectedSlot = { id: string; fixture: string; venue: string; localTime: string };
 type Props = {
@@ -17,16 +17,24 @@ export function DisruptionDeclaration({ officialVersion, slots, onRepairReady }:
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [remedies, setRemedies] = useState<string[]>([]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!selected.length) { setError("Select at least one unavailable venue-time slot."); return; }
-    setPending(true); setError(null);
+    setPending(true); setError(null); setRemedies([]);
     try {
       const repair = await new CrickOpsApiClient().declareAndRepairDisruption(type, selected);
       setResult(repair.draft_id);
       onRepairReady?.(repair.draft_id);
-    } catch (declarationError) { setError(declarationError instanceof Error ? declarationError.message : "Recovery could not start."); }
+    } catch (declarationError) {
+      setError(declarationError instanceof Error ? declarationError.message : "Recovery could not start.");
+      if (declarationError instanceof ApiProblemError) {
+        setRemedies((declarationError.remedies ?? []).flatMap((remedy) =>
+          typeof remedy.description === "string" ? [remedy.description] : [],
+        ));
+      }
+    }
     finally { setPending(false); }
   }
 
@@ -36,7 +44,7 @@ export function DisruptionDeclaration({ officialVersion, slots, onRepairReady }:
       <form onSubmit={submit}>
         <fieldset className="disruption-types"><legend>Disruption type</legend><label><input type="radio" name="type" checked={type === "rain"} onChange={() => setType("rain")} /><strong>Rain disruption</strong><span>Forecast threshold or organizer-declared rain impact.</span></label><label><input type="radio" name="type" checked={type === "venue_unavailability"} onChange={() => setType("venue_unavailability")} /><strong>Venue unavailable</strong><span>Block one or more venue-time slots.</span></label></fieldset>
         <fieldset className="affected-fixtures"><legend>Affected fixtures</legend><p>Select at least one unavailable venue-time slot from the official schedule.</p>{slots.length ? slots.map((slot) => <label key={slot.id}><input type="checkbox" checked={selected.includes(slot.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, slot.id] : current.filter((id) => id !== slot.id))} /><span><strong>{slot.fixture}</strong><small>{slot.venue} · {slot.localTime}</small></span></label>) : <div className="operation-status">No official fixture slots are available for recovery.</div>}</fieldset>
-        {error && <div className="error-banner" role="alert">{error}</div>}
+        {error && <div className="error-banner" role="alert"><strong>Repair could not be generated</strong><p>{error}</p>{remedies.length > 0 && <ul>{remedies.map((remedy) => <li key={remedy}>{remedy}</li>)}</ul>}</div>}
         {result && <div className="official-confirmation" role="status"><strong>Repaired draft ready</strong><span>Draft {result} is awaiting review and approval.</span></div>}
         <button className="primary-action" type="submit" disabled={pending}>{pending ? "Repairing and validating…" : "Generate a repaired draft"}</button>
       </form>

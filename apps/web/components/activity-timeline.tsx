@@ -54,6 +54,12 @@ const hiddenPayloadKeys = new Set([
   "trace_id",
   "tool_call",
   "token",
+  "draft_id",
+  "disruption_id",
+  "run_id",
+  "slot_id",
+  "version_id",
+  "workspace_id",
 ]);
 
 function payloadDetails(payload: Record<string, unknown> | undefined) {

@@ -73,4 +73,3 @@ def test_director_runtime_executes_agents_sdk_runner_with_primary_provider() -> 
     assert calls[0]["max_turns"] == 8
     assert calls[0]["run_config"].trace_include_sensitive_data is False
     assert calls[0]["run_config"].model_provider is not None
-

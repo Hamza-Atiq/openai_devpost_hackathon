@@ -12,6 +12,7 @@ const invalidOption: ComparisonOption = {
     weatherRisk: 42,
     weatherCoverage: 80,
     groupRestFairness: 88,
+    potentialKnockoutRest: 82,
     venueBalance: 91,
     slotBalance: 86,
     preferenceSatisfaction: 90,
@@ -28,6 +29,7 @@ describe("Profile comparison", () => {
     expect(markup).toContain("Fairness-first");
     expect(markup).toContain("Independent validation passed");
     expect(markup).toContain("Weather coverage");
+    expect(markup).toContain("Potential knockout rest");
     expect(markup).toContain("Soft-constraint notes");
     expect(markup).not.toContain("Recommended");
     expect(markup).not.toContain("Custom schedule</h2>");

@@ -8,6 +8,8 @@ export type ProblemDetails = {
   detail: string;
   correlation_id: string;
   retryable: boolean;
+  evidence?: Array<Record<string, unknown>> | null;
+  remedies?: Array<{ code?: string; description?: string } & Record<string, unknown>> | null;
 };
 
 export type WorkspaceView = {
@@ -73,6 +75,7 @@ export type ScheduleOptionResponse = {
     weather_risk: number | null;
     weather_coverage: number;
     group_rest_fairness: number;
+    potential_knockout_rest: number;
     venue_balance: number;
     slot_balance: number;
     preference_satisfaction: number;
@@ -209,6 +212,7 @@ export class ApiProblemError extends Error {
   readonly status: number;
   readonly correlationId: string;
   readonly retryable: boolean;
+  readonly remedies: ProblemDetails["remedies"];
 
   constructor(problem: ProblemDetails) {
     super(problem.detail);
@@ -217,6 +221,7 @@ export class ApiProblemError extends Error {
     this.status = problem.status;
     this.correlationId = problem.correlation_id;
     this.retryable = problem.retryable;
+    this.remedies = problem.remedies;
   }
 }
 

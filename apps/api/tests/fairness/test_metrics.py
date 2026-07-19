@@ -77,6 +77,10 @@ def test_venue_and_slot_balance_match_golden_vectors() -> None:
     ) == Decimal("66.7")
 
 
+def test_venue_balance_does_not_hide_team_imbalance_behind_equal_aggregate_totals() -> None:
+    assert venue_balance({"team-a": (2, 0), "team-b": (0, 2)}) == Decimal("50.0")
+
+
 def test_preference_satisfaction_is_priority_weighted() -> None:
     score = preference_satisfaction(
         (

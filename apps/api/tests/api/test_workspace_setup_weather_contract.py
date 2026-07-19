@@ -198,6 +198,50 @@ class StubWeatherService:
         }
 
 
+def test_sample_workspace_starts_with_real_deterministic_weather_snapshot() -> None:
+    service = StubWeatherService()
+    client = api_client(create_app(weather_service=service))
+
+    created = client.post(
+        "/api/v1/workspaces",
+        json={"sample_id": "global-community-cup"},
+    )
+
+    assert created.status_code == 201
+    assert created.json()["weather"]["mode"] == "deterministic"
+    assert created.json()["weather"]["coverage"] == 100.0
+    assert service.modes == ["deterministic"]
+
+
+def test_reset_demo_clears_tournament_owned_state_and_loads_the_selected_sample() -> None:
+    service = StubWeatherService()
+    app = create_app(weather_service=service)
+    client = api_client(app)
+    client.post("/api/v1/workspaces", json={"sample_id": "pakistan-community-cup"})
+    token = client.cookies.get("__Host-crickops_guest")
+    workspace = app.state.workspace_store.get(token)
+    assert workspace is not None
+    workspace.schedule_runs["old-run"] = {"status": "complete"}
+    workspace.official_versions.append({"version_id": "old-version"})
+    workspace.disruptions["old-disruption"] = {"status": "active"}
+    app.state.operations.audit_events[workspace.workspace_id] = [{"event_id": "old-event"}]
+
+    reset = client.post(
+        "/api/v1/workspace/reset",
+        json={"sample_id": "global-community-cup"},
+    )
+    restored = client.get("/api/v1/workspace")
+
+    assert reset.status_code == 200
+    assert restored.json()["tournament"]["name"] == "Global Community Cricket Cup"
+    assert workspace.schedule_runs == {}
+    assert workspace.official_versions == []
+    assert workspace.disruptions == {}
+    assert restored.json()["weather"]["mode"] == "deterministic"
+    reset_event = app.state.operations.audit_events[workspace.workspace_id][0]
+    assert reset_event["event_type"] == "workspace_reset"
+
+
 def test_live_weather_service_persists_slot_level_risk_and_provenance() -> None:
     service = StubWeatherService()
     client = api_client(create_app(weather_service=service))
@@ -213,7 +257,7 @@ def test_live_weather_service_persists_slot_level_risk_and_provenance() -> None:
     assert response.json()["provider"] == "open-meteo"
     assert response.json()["attribution"] == "Weather data by Open-Meteo.com"
     assert restored.json() == response.json()
-    assert service.modes == ["live"]
+    assert service.modes == ["deterministic", "live"]
 
 
 def test_weather_threshold_stays_proposed_until_explicit_confirmation() -> None:

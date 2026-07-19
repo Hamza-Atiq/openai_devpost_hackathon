@@ -8,6 +8,7 @@ export type ComparisonMetrics = {
   weatherRisk: number | null;
   weatherCoverage: number;
   groupRestFairness: number;
+  potentialKnockoutRest: number;
   venueBalance: number;
   slotBalance: number;
   preferenceSatisfaction: number;
@@ -38,21 +39,21 @@ const defaultOptions: ComparisonOption[] = [
     profile: "balanced",
     label: "Balanced",
     validationValid: true,
-    metrics: { weatherRisk: 31, weatherCoverage: 100, groupRestFairness: 92, venueBalance: 94, slotBalance: 88, preferenceSatisfaction: 91 },
+    metrics: { weatherRisk: 31, weatherCoverage: 100, groupRestFairness: 92, potentialKnockoutRest: 85, venueBalance: 94, slotBalance: 88, preferenceSatisfaction: 91 },
     softViolations: ["One prime-time preference remains unmet."],
   },
   {
     profile: "weather-first",
     label: "Weather-first",
     validationValid: true,
-    metrics: { weatherRisk: 22, weatherCoverage: 100, groupRestFairness: 86, venueBalance: 88, slotBalance: 84, preferenceSatisfaction: 87 },
+    metrics: { weatherRisk: 22, weatherCoverage: 100, groupRestFairness: 86, potentialKnockoutRest: 81, venueBalance: 88, slotBalance: 84, preferenceSatisfaction: 87 },
     softViolations: ["Two teams receive a shorter rest margin than Balanced."],
   },
   {
     profile: "fairness-first",
     label: "Fairness-first",
     validationValid: true,
-    metrics: { weatherRisk: 37, weatherCoverage: 100, groupRestFairness: 97, venueBalance: 98, slotBalance: 95, preferenceSatisfaction: 84 },
+    metrics: { weatherRisk: 37, weatherCoverage: 100, groupRestFairness: 97, potentialKnockoutRest: 94, venueBalance: 98, slotBalance: 95, preferenceSatisfaction: 84 },
     softViolations: ["A preferred weekend slot is not used."],
   },
 ];
@@ -61,6 +62,7 @@ const metricRows: Array<{ key: keyof ComparisonMetrics; label: string; direction
   { key: "weatherRisk", label: "Weather risk", direction: "Lower is better" },
   { key: "weatherCoverage", label: "Weather coverage", direction: "Higher is better" },
   { key: "groupRestFairness", label: "Rest fairness", direction: "Higher is better" },
+  { key: "potentialKnockoutRest", label: "Potential knockout rest", direction: "Higher is better" },
   { key: "venueBalance", label: "Venue balance", direction: "Higher is better" },
   { key: "slotBalance", label: "Slot balance", direction: "Higher is better" },
   { key: "preferenceSatisfaction", label: "Preference satisfaction", direction: "Higher is better" },

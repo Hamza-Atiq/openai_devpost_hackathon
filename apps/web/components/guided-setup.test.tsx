@@ -20,8 +20,9 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("Weekend start times");
     expect(markup).toContain("Venue blackout date");
     expect(markup).toContain("Constraint Ledger");
-    expect(markup).toContain("Hard rule");
-    expect(markup).toContain("Preferred");
+    expect(markup).toContain("System invariant");
+    expect(markup).toContain("No additional minimum rest configured");
+    expect(markup).toContain("Soft preference");
     expect(markup).toContain("Confirm and generate schedules");
     expect(markup).toContain("Confirmation pending");
     expect(markup).toContain('aria-live="polite"');

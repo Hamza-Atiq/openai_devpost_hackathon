@@ -119,6 +119,50 @@ def build_v1_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
+    def sample_weather(workspace: GuestWorkspace) -> dict[str, object]:
+        if workspace.tournament is None or weather_service is None:
+            return {
+                "mode": "live",
+                "quality": "not_requested",
+                "demo_mode_available": True,
+                "scenario_id": None,
+            }
+        try:
+            return weather_service.refresh(
+                workspace.tournament,
+                mode="deterministic",
+                scenario_id="sample-baseline-v1",
+            )
+        except Exception:
+            return {
+                "mode": "deterministic",
+                "quality": "unavailable",
+                "demo_mode_available": True,
+                "scenario_id": "sample-baseline-v1",
+                "provider": None,
+                "coverage": 0.0,
+                "slot_risks": {},
+                "slot_details": {},
+                "guidance": "Weather risk is unavailable; deterministic scheduling remains usable.",
+            }
+
+    def clear_tournament_state(workspace: GuestWorkspace) -> None:
+        workspace.schedule_runs.clear()
+        workspace.drafts.clear()
+        workspace.draft_revisions.clear()
+        workspace.rejected_drafts.clear()
+        workspace.idempotency.clear()
+        workspace.official_versions.clear()
+        workspace.edits.clear()
+        workspace.disruptions.clear()
+        workspace.schedule_diffs.clear()
+        workspace.feedback.clear()
+        workspace.constraint_confirmation = None
+        workspace.setup_draft = None
+        workspace.audit_events.clear()
+        if operations is not None:
+            operations.audit_events[workspace.workspace_id] = []
+
     @router.get("/samples")
     def list_samples() -> list[dict[str, object]]:
         return [
@@ -138,6 +182,7 @@ def build_v1_router(
     ) -> dict[str, object]:
         validate_bootstrap_origin(request)
         token, workspace = store.create(_load_requested_sample(body.sample_id))
+        workspace.weather = sample_weather(workspace)
         response.set_cookie(
             COOKIE_NAME,
             token,
@@ -184,13 +229,21 @@ def build_v1_router(
         body: CreateWorkspaceInput,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ) -> dict[str, object]:
+        clear_tournament_state(workspace)
         workspace.tournament = _load_requested_sample(body.sample_id)
-        workspace.weather = {
-            "mode": "live",
-            "quality": "not_requested",
-            "demo_mode_available": True,
-            "scenario_id": None,
-        }
+        workspace.weather = sample_weather(workspace)
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="workspace_reset",
+                summary=(
+                    "Demo workspace reset to the selected sample."
+                    if workspace.tournament is not None
+                    else "Demo workspace reset to a blank tournament."
+                ),
+                structured_payload={"sample_id": body.sample_id},
+            )
         return _workspace_view(workspace)
 
     @router.get("/tournament")

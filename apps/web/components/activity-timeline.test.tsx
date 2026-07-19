@@ -15,7 +15,7 @@ describe("Organizer activity timeline", () => {
             actor_type: "organizer",
             summary: "Version 2 approved as the official workspace schedule.",
             occurred_at: "2026-07-16T08:30:00+00:00",
-            structured_payload: { version_number: 2 },
+            structured_payload: { version_number: 2, draft_id: "internal-draft-uuid" },
           },
           {
             id: "event-1",
@@ -40,6 +40,7 @@ describe("Organizer activity timeline", () => {
     expect(markup).not.toContain("raw_prompt");
     expect(markup).not.toContain("stack_trace");
     expect(markup).not.toContain("hidden_reasoning");
+    expect(markup).not.toContain("internal-draft-uuid");
   });
 
   it("shows a clear empty state without inventing activity", () => {

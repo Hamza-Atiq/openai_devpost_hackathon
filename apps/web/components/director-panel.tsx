@@ -159,7 +159,7 @@ export function DirectorPanel() {
         </button>
       </div>
       <p className="director-action-status" aria-live="polite">
-        {error ?? "Guest data expires after inactivity; product-wide feedback is opt-in only."}
+        {error ?? "Guest data expires after seven days of inactivity; product-wide feedback is opt-in only."}
       </p>
     </aside>
   );

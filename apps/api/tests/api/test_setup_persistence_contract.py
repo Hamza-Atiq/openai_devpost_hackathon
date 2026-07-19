@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from app.main import create_app
 from fastapi.testclient import TestClient
@@ -64,8 +64,10 @@ def test_pakistan_sample_exposes_its_authoritative_setup_values() -> None:
         "Canal Community Ground",
         "Garden Sports Ground",
     ]
-    assert setup.json()["start_date"] == "2026-09-01"
-    assert setup.json()["end_date"] == "2026-09-10"
+    start_date = date.fromisoformat(setup.json()["start_date"])
+    end_date = date.fromisoformat(setup.json()["end_date"])
+    assert date.today() + timedelta(days=2) <= start_date <= date.today() + timedelta(days=4)
+    assert end_date - start_date == timedelta(days=9)
 
 
 def test_complete_setup_edit_is_normalized_persisted_and_restored() -> None:

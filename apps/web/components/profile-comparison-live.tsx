@@ -39,6 +39,7 @@ export function ProfileComparisonLive({ initialRunId }: { initialRunId?: string 
         weatherRisk: option.metrics.weather_risk,
         weatherCoverage: option.metrics.weather_coverage,
         groupRestFairness: option.metrics.group_rest_fairness,
+        potentialKnockoutRest: option.metrics.potential_knockout_rest,
         venueBalance: option.metrics.venue_balance,
         slotBalance: option.metrics.slot_balance,
         preferenceSatisfaction: option.metrics.preference_satisfaction,

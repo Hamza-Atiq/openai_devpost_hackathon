@@ -72,10 +72,9 @@ export function SampleChooser() {
       </div>
       {error ? <p className="error-banner" role="alert">{error}</p> : null}
       <p className="privacy-note">
-        Guest workspaces expire after inactivity. Do not enter personal, confidential,
+        Guest workspaces expire after seven days of inactivity. Do not enter personal, confidential,
         financial, or payment information.
       </p>
     </section>
   );
 }
-

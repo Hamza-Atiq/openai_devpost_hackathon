@@ -26,12 +26,10 @@ type GuidedSetupProps = {
   }) => Promise<void>;
 };
 
-const constraints = [
-  ["Fixed competition structure", "8 teams · 2 groups · 15 fixtures", "Hard rule"],
-  ["Daily team limit", "A team plays at most once per local calendar day", "Hard rule"],
-  ["Knockout chronology", "Groups → semifinals → final", "Hard rule"],
-  ["Minimum rest", "Applied across group and knockout paths", "Hard rule"],
-  ["Audience timing", "Prefer prime-time and weekend slots", "Preferred"],
+const competitionInvariants = [
+  ["Fixed competition structure", "8 teams · 2 groups · 15 fixtures", "System invariant"],
+  ["Daily team limit", "A team plays at most once per local calendar day", "System invariant"],
+  ["Knockout chronology", "Groups → semifinals → final", "System invariant"],
 ] as const;
 
 function fallbackDraft(revision: number): TournamentSetupSaveInput {
@@ -84,6 +82,20 @@ export function GuidedSetup({
   const allocation = useMemo(
     () => allocationMinutes(draft.match_format_preset),
     [draft.match_format_preset],
+  );
+  const constraintLedger = useMemo(
+    () => [
+      ...competitionInvariants,
+      [
+        "Minimum rest",
+        draft.minimum_rest_minutes > 0
+          ? `${draft.minimum_rest_minutes} minutes across group and knockout paths`
+          : "No additional minimum rest configured",
+        draft.minimum_rest_minutes > 0 ? "Organizer hard constraint" : "Not configured",
+      ],
+      ["Audience timing", "Prefer selected prime-time and weekend slots", "Soft preference"],
+    ],
+    [draft.minimum_rest_minutes],
   );
 
   function updateDraft(
@@ -381,12 +393,12 @@ export function GuidedSetup({
             <p className="eyebrow">Authoritative review</p>
             <h2 id="ledger-heading">Constraint Ledger</h2>
           </div>
-          <span>{constraints.length} decisions</span>
+          <span>{constraintLedger.length} review items</span>
         </div>
         <div className="ledger-list">
-          {constraints.map(([name, detail, kind]) => (
+          {constraintLedger.map(([name, detail, kind]) => (
             <div className="ledger-row" key={name}>
-              <span className={kind === "Hard rule" ? "rule-hard" : "rule-soft"}>{kind}</span>
+              <span className={kind === "Soft preference" ? "rule-soft" : "rule-hard"}>{kind}</span>
               <div><strong>{name}</strong><p>{detail}</p></div>
             </div>
           ))}
