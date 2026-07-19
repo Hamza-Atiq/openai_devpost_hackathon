@@ -7,7 +7,12 @@ from typing import Any, Protocol
 from agents import RunConfig, Runner
 from pydantic import Field
 
-from app.agents.director import DirectorTurnInput, DirectorTurnOutput, create_director_agent
+from app.agents.director import (
+    DirectorTurnInput,
+    DirectorTurnOutput,
+    SpecialistRequest,
+    create_director_agent,
+)
 from app.agents.instructions import AgentEvidence, AgentOutputClaims, evaluate_output_claims
 from app.agents.provider import AgentProviderRouter, ProviderRoute
 from app.agents.resilience import AgentResilienceManager
@@ -48,8 +53,39 @@ SpecialistRequestBuilder = Callable[
 ]
 
 
+def normalize_specialist_requests(
+    requests: tuple[SpecialistRequest, ...],
+    *,
+    workspace: GuestWorkspace,
+    user_message: str,
+) -> tuple[SpecialistRequest, ...]:
+    lowered = user_message.casefold()
+    asks_for_comparison = any(
+        word in lowered for word in ("option", "profile", "schedule")
+    ) and any(
+        word in lowered
+        for word in ("lowest", "highest", "compare", "best", "risk", "fairness")
+    )
+    roles = {request.role for request in requests}
+    if (
+        asks_for_comparison
+        and workspace.schedule_runs
+        and AgentRole.SCHEDULING_STRATEGY not in roles
+    ):
+        return (
+            *requests,
+            SpecialistRequest(
+                role=AgentRole.SCHEDULING_STRATEGY,
+                reason="Compare schedule options using validated solver metrics",
+                required_evidence=("validated_schedule_comparison",),
+            ),
+        )
+    return requests
+
+
 def _workspace_summary(workspace: GuestWorkspace) -> dict[str, object]:
     tournament = workspace.tournament
+    latest_run = next(reversed(tuple(workspace.schedule_runs.values())), None)
     return {
         "tournament": (
             None
@@ -73,6 +109,11 @@ def _workspace_summary(workspace: GuestWorkspace) -> dict[str, object]:
         },
         "official_version_count": len(workspace.official_versions),
         "draft_count": len(workspace.drafts),
+        "latest_validated_options": (
+            latest_run.get("options", ())
+            if latest_run is not None and latest_run.get("status") == "completed"
+            else ()
+        ),
     }
 
 
@@ -164,13 +205,18 @@ class DirectorRuntime:
             )
         output = outputs[(result.provider or "", result.model or "")]
         specialist_evidence: tuple[Mapping[str, object], ...] = ()
+        requested_specialists = normalize_specialist_requests(
+            output.specialist_requests,
+            workspace=workspace,
+            user_message=user_message,
+        )
         if (
-            output.specialist_requests
+            requested_specialists
             and self._specialist_runtime is not None
             and self._specialist_request_builder is not None
         ):
             collected: list[Mapping[str, object]] = []
-            for specialist_request in output.specialist_requests:
+            for specialist_request in requested_specialists:
                 request = self._specialist_request_builder(
                     workspace, specialist_request, user_message
                 )

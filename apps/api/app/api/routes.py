@@ -24,6 +24,7 @@ from app.security.csrf import (
     validate_workspace_mutation,
 )
 from app.weather.service import WeatherServiceProtocol
+from app.weather.state import bind_weather_state, invalidate_weather, weather_slot_digest
 
 if TYPE_CHECKING:
     from app.api.operations import OperationsState
@@ -128,23 +129,31 @@ def build_v1_router(
                 "scenario_id": None,
             }
         try:
-            return weather_service.refresh(
+            return bind_weather_state(
+                weather_service.refresh(
+                    workspace.tournament,
+                    mode="deterministic",
+                    scenario_id="sample-baseline-v1",
+                ),
                 workspace.tournament,
-                mode="deterministic",
-                scenario_id="sample-baseline-v1",
             )
         except Exception:
-            return {
-                "mode": "deterministic",
-                "quality": "unavailable",
-                "demo_mode_available": True,
-                "scenario_id": "sample-baseline-v1",
-                "provider": None,
-                "coverage": 0.0,
-                "slot_risks": {},
-                "slot_details": {},
-                "guidance": "Weather risk is unavailable; deterministic scheduling remains usable.",
-            }
+            return bind_weather_state(
+                {
+                    "mode": "deterministic",
+                    "quality": "unavailable",
+                    "demo_mode_available": True,
+                    "scenario_id": "sample-baseline-v1",
+                    "provider": None,
+                    "coverage": 0.0,
+                    "slot_risks": {},
+                    "slot_details": {},
+                    "guidance": (
+                        "Weather risk is unavailable; deterministic scheduling remains usable."
+                    ),
+                },
+                workspace.tournament,
+            )
 
     def clear_tournament_state(workspace: GuestWorkspace) -> None:
         workspace.schedule_runs.clear()
@@ -310,6 +319,7 @@ def build_v1_router(
             )
         from app.scheduling.slot_patterns import expand_slot_patterns
 
+        previous_digest = weather_slot_digest(workspace.tournament)
         workspace.tournament = expand_slot_patterns(
             workspace.tournament,
             body,
@@ -317,6 +327,11 @@ def build_v1_router(
         )
         workspace.setup_draft = setup_state_from_input(body)
         workspace.constraint_confirmation = None
+        workspace.weather = (
+            invalidate_weather(workspace.weather, workspace.tournament)
+            if weather_slot_digest(workspace.tournament) != previous_digest
+            else bind_weather_state(workspace.weather, workspace.tournament)
+        )
         result = setup_view(workspace.tournament, workspace.setup_draft).model_dump(mode="json")
         workspace.idempotency[f"setup:{idempotency_key}"] = result
         if operations is not None:
@@ -346,9 +361,15 @@ def build_v1_router(
             )
         from app.domain.tournament import TournamentConfig
 
+        previous_digest = weather_slot_digest(workspace.tournament)
         current = workspace.tournament.model_dump(mode="python")
         workspace.tournament = TournamentConfig.model_validate(
             {**current, **body, "revision": workspace.tournament.revision + 1}
+        )
+        workspace.weather = (
+            invalidate_weather(workspace.weather, workspace.tournament)
+            if weather_slot_digest(workspace.tournament) != previous_digest
+            else bind_weather_state(workspace.weather, workspace.tournament)
         )
         return workspace.tournament
 
@@ -429,6 +450,7 @@ def build_v1_router(
         workspace.tournament = workspace.tournament.model_copy(
             update={"status": TournamentStatus.READY_TO_SCHEDULE, "revision": next_revision}
         )
+        workspace.weather = bind_weather_state(workspace.weather, workspace.tournament)
         previous_selection = (
             dict(workspace.constraint_confirmation.get("selection", {}))
             if workspace.constraint_confirmation is not None
@@ -541,7 +563,7 @@ def build_v1_router(
                 title="Tournament is not ready",
                 detail="Load or create a tournament before refreshing weather.",
             )
-        workspace.weather = (
+        weather = (
             weather_service.refresh(workspace.tournament, mode=body.mode)
             if weather_service is not None
             else {
@@ -552,6 +574,7 @@ def build_v1_router(
                 "guidance": "Weather risk is planning guidance only.",
             }
         )
+        workspace.weather = bind_weather_state(weather, workspace.tournament)
         return workspace.weather
 
     @router.get("/weather")
@@ -580,7 +603,7 @@ def build_v1_router(
                 title="Tournament is not ready",
                 detail="Load or create a tournament before activating demo weather.",
             )
-        workspace.weather = (
+        weather = (
             weather_service.refresh(
                 workspace.tournament,
                 mode="deterministic",
@@ -595,6 +618,7 @@ def build_v1_router(
                 "guidance": "Weather risk is planning guidance only.",
             }
         )
+        workspace.weather = bind_weather_state(weather, workspace.tournament)
         return workspace.weather
 
     @router.post("/weather/thresholds")

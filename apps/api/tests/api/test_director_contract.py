@@ -27,6 +27,7 @@ def test_production_runtime_selects_primary_openai_mode() -> None:
     assert application.state.operations.provider == "openai"
     assert application.state.operations.model == "gpt-5.6"
     assert application.state.specialist_runtime is not None
+    assert application.state.workflow_orchestrator is not None
 
 
 def test_emergency_switch_keeps_production_runtime_deterministic() -> None:

@@ -11,11 +11,12 @@ from app.agents.runtime import DirectorRuntime
 from app.agents.schemas import AgentMode
 from app.agents.specialist_evidence import build_specialist_request
 from app.agents.specialist_runtime import SpecialistRuntime
+from app.agents.workflow_orchestrator import WorkflowAgentOrchestrator
 from app.api.director import DirectorRuntimeProtocol, build_director_router
 from app.api.operations import OperationsState, build_operations_router
 from app.api.problems import install_problem_handlers
 from app.api.routes import COOKIE_NAME, build_v1_router
-from app.api.schedules import build_schedule_router
+from app.api.schedules import WorkflowOrchestratorProtocol, build_schedule_router
 from app.api.workspace import GuestWorkspaceStore, PostgresGuestWorkspaceStore
 from app.deployment.runtime import database_engine
 from app.limits.public_demo import DemoLimits, PublicDemoProtection
@@ -44,6 +45,7 @@ def create_app(
     server_settings: ServerSettings | None = None,
     csrf_required: bool | None = None,
     director_runtime: DirectorRuntimeProtocol | None = None,
+    workflow_orchestrator: WorkflowOrchestratorProtocol | None = None,
     weather_service: WeatherServiceProtocol | None = None,
 ) -> FastAPI:
     application = FastAPI(title="CrickOps AI API", lifespan=_application_lifespan)
@@ -121,6 +123,11 @@ def create_app(
             specialist_request_builder=build_specialist_request,
         )
     application.state.director_runtime = director_runtime
+    if workflow_orchestrator is None and application.state.specialist_runtime is not None:
+        workflow_orchestrator = WorkflowAgentOrchestrator(
+            application.state.specialist_runtime
+        )
+    application.state.workflow_orchestrator = workflow_orchestrator
     application.include_router(
         build_v1_router(
             application.state.workspace_store,
@@ -130,7 +137,11 @@ def create_app(
         )
     )
     application.include_router(
-        build_schedule_router(application.state.operations, application.state.demo_protection)
+        build_schedule_router(
+            application.state.operations,
+            application.state.demo_protection,
+            application.state.workflow_orchestrator,
+        )
     )
     application.include_router(build_operations_router(application.state.operations))
     application.include_router(

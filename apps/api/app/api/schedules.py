@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from decimal import Decimal
 from time import perf_counter
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Protocol
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
@@ -30,6 +31,30 @@ from app.scheduling.pairings import generate_match_graph
 from app.scheduling.precheck import RemedyCode, run_pre_solver_checks
 from app.scheduling.profiles import ComponentPenalties, generate_profile_options
 from app.scheduling.repair import RepairStatus, repair_schedule
+
+
+class WorkflowOrchestratorProtocol(Protocol):
+    async def after_generation(
+        self, *, workspace: GuestWorkspace, run: Mapping[str, object]
+    ) -> tuple[Mapping[str, object], ...]: ...
+
+
+def _specialist_status(evidence: tuple[Mapping[str, object], ...]) -> str:
+    available = sum(bool(item.get("available")) for item in evidence)
+    if available == len(evidence) and evidence:
+        return "complete"
+    if available:
+        return "partial"
+    return "unavailable"
+
+    async def after_repair(
+        self,
+        *,
+        workspace: GuestWorkspace,
+        draft_id: str,
+        disruption: Mapping[str, object],
+        diff: Mapping[str, object],
+    ) -> tuple[Mapping[str, object], ...]: ...
 
 
 class CustomPrioritiesInput(DomainModel):
@@ -228,11 +253,12 @@ def _component_penalties(
 def build_schedule_router(
     operations: OperationsState | None = None,
     demo_protection: PublicDemoProtection | None = None,
+    workflow_orchestrator: WorkflowOrchestratorProtocol | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
     @router.post("/schedule-runs", status_code=status.HTTP_202_ACCEPTED)
-    def start_schedule_run(
+    async def start_schedule_run(
         body: ScheduleRunInput,
         request: Request,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
@@ -417,8 +443,25 @@ def build_schedule_router(
             "status": "completed",
             "draft_ids": [item["draft_id"] for item in options],
             "options": options,
+            "specialist_evidence": [],
+            "agent_status": "not_configured",
         }
         workspace.schedule_runs[run_id] = run
+        if workflow_orchestrator is not None:
+            try:
+                specialist_evidence = await workflow_orchestrator.after_generation(
+                    workspace=workspace, run=run
+                )
+                run["specialist_evidence"] = list(specialist_evidence)
+                run["agent_status"] = _specialist_status(specialist_evidence)
+            except Exception as exc:
+                run["agent_status"] = "unavailable"
+                observe(
+                    component="agent",
+                    event="generation_specialists",
+                    outcome="unavailable",
+                    metadata={"error_type": type(exc).__name__},
+                )
         observe(
             component="database",
             event="schedule_run_saved",
@@ -434,10 +477,16 @@ def build_schedule_router(
                 structured_payload={
                     "run_id": run_id,
                     "profiles": [str(item["profile"]) for item in options],
+                    "agent_status": run["agent_status"],
+                    "specialist_evidence": run["specialist_evidence"],
                 },
                 actor_type="system",
             )
-        accepted = {"run_id": run_id, "status": "accepted"}
+        accepted = {
+            "run_id": run_id,
+            "status": "accepted",
+            "agent_status": run["agent_status"],
+        }
         workspace.idempotency[f"generation:{idempotency_key}"] = accepted
         return accepted
 
@@ -989,7 +1038,7 @@ def build_schedule_router(
         return disruption
 
     @router.post("/disruptions/{disruption_id}/repair-runs", status_code=202)
-    def start_repair(
+    async def start_repair(
         disruption_id: str,
         request: Request,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
@@ -1204,6 +1253,27 @@ def build_schedule_router(
             draft_metrics=repaired.metrics,
         )
         workspace.schedule_diffs[draft_id] = diff.model_dump(mode="json")
+        specialist_evidence: tuple[Mapping[str, object], ...] = ()
+        agent_status = "not_configured"
+        if workflow_orchestrator is not None:
+            try:
+                specialist_evidence = await workflow_orchestrator.after_repair(
+                    workspace=workspace,
+                    draft_id=draft_id,
+                    disruption=disruption,
+                    diff=workspace.schedule_diffs[draft_id],
+                )
+                agent_status = _specialist_status(specialist_evidence)
+            except Exception as exc:
+                agent_status = "unavailable"
+                observe(
+                    component="agent",
+                    event="repair_specialists",
+                    outcome="unavailable",
+                    metadata={"error_type": type(exc).__name__},
+                )
+        disruption["specialist_evidence"] = list(specialist_evidence)
+        disruption["agent_status"] = agent_status
         observe(
             component="database",
             event="repair_draft_saved",
@@ -1220,12 +1290,16 @@ def build_schedule_router(
                     "draft_id": draft_id,
                     "disruption_id": disruption_id,
                     "moved_count": len(diff.moved),
+                    "agent_status": agent_status,
+                    "specialist_evidence": specialist_evidence,
                 },
             )
         return {
             "run_id": str(uuid4()),
             "status": "completed",
             "draft_id": draft_id,
+            "agent_status": agent_status,
+            "specialist_evidence": specialist_evidence,
         }
 
     @router.get("/schedule-diffs/{draft_id}")
