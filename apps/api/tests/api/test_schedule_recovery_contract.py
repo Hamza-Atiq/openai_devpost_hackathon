@@ -25,12 +25,22 @@ SCHEDULE_PATHS = {
 }
 
 
-def client_with_sample() -> TestClient:
+def client_with_sample(*, confirm_constraints: bool = True) -> TestClient:
     client = TestClient(create_app(), base_url="https://testserver")
-    client.post(
+    created = client.post(
         "/api/v1/workspaces",
         json={"sample_id": "global-community-cup"},
-    )
+    ).json()
+    if confirm_constraints:
+        confirmed = client.post(
+            "/api/v1/constraints/confirm",
+            json={
+                "confirmation": True,
+                "expected_revision": created["tournament"]["revision"],
+                "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+            },
+        )
+        assert confirmed.status_code == 200
     return client
 
 
@@ -66,10 +76,19 @@ def test_generation_passes_real_choices_and_weather_penalties_to_profiles(
 ) -> None:
     app = create_app()
     client = TestClient(app, base_url="https://testserver")
-    client.post(
+    created = client.post(
         "/api/v1/workspaces",
         json={"sample_id": "global-community-cup"},
+    ).json()
+    confirmed = client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": created["tournament"]["revision"],
+            "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+        },
     )
+    assert confirmed.status_code == 200
     workspace = next(iter(app.state.workspace_store._items.values()))
     assert workspace.tournament is not None
     workspace.weather["slot_risks"] = {
@@ -186,7 +205,7 @@ def test_disruption_rejects_workspace_without_official_baseline() -> None:
 def test_supported_disruption_produces_validated_minimum_change_diff(
     disruption_type: str,
 ) -> None:
-    client = client_with_sample()
+    client = client_with_sample(confirm_constraints=False)
     correlation_id = "018f6c7a-9a4b-7c1d-8e2f-123456789abc"
     workspace = client.get("/api/v1/workspace").json()
     confirmed = client.post(

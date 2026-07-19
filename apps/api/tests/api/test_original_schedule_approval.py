@@ -7,7 +7,17 @@ from fastapi.testclient import TestClient
 def _generated() -> tuple[TestClient, object, str]:
     app = create_app()
     client = TestClient(app, base_url="https://testserver")
-    client.post("/api/v1/workspaces", json={"sample_id": "global-community-cup"})
+    created = client.post(
+        "/api/v1/workspaces", json={"sample_id": "global-community-cup"}
+    ).json()
+    client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": created["tournament"]["revision"],
+            "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+        },
+    )
     accepted = client.post(
         "/api/v1/schedule-runs",
         headers={"Idempotency-Key": "approval-generation"},
@@ -45,6 +55,7 @@ def test_explicit_approval_creates_version_timestamp_and_audit_event() -> None:
         "schedule_approved",
         "schedule_feedback_recorded",
         "schedule_options_generated",
+        "constraints_confirmed",
     ]
     assert "Version 1" in audit.json()["items"][0]["summary"]
     assert exported.json()["workspace"]["feedback"][0]["reason"] == "unfair_rest_distribution"

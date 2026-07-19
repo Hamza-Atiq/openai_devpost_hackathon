@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from fastapi import APIRouter, Cookie, Depends, Query, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Header, Query, Request, Response, status
 from pydantic import Field
 
 from app.api.audit import append_audit_event
 from app.api.problems import APIProblem
+from app.api.setup_models import (
+    TournamentSetupDraftInput,
+    setup_state_from_input,
+    setup_view,
+)
 from app.api.workspace import GuestWorkspace, GuestWorkspaceStore
 from app.domain.common import DomainModel
 from app.domain.samples import available_samples, load_sample
@@ -57,6 +63,10 @@ class GenericPayload(DomainModel):
     payload: Mapping[str, Any] = {}
 
 
+class PrecheckInput(DomainModel):
+    expected_revision: int = Field(ge=0)
+
+
 def _load_requested_sample(sample_id: str | None):
     if sample_id is None:
         return None
@@ -75,7 +85,9 @@ def _workspace_view(workspace: GuestWorkspace) -> dict[str, object]:
     return {
         "workspace_id": workspace.workspace_id,
         "tournament": (
-            workspace.tournament.model_dump(mode="json") if workspace.tournament else None
+            setup_view(workspace.tournament, workspace.setup_draft).model_dump(mode="json")
+            if workspace.tournament
+            else None
         ),
         "weather": workspace.weather,
         "constraint_confirmation": workspace.constraint_confirmation,
@@ -190,17 +202,77 @@ def build_v1_router(
                 title="No active tournament",
                 detail="Create a blank tournament or load a sample first.",
             )
-        return workspace.tournament
+        return setup_view(workspace.tournament, workspace.setup_draft)
 
     @router.put("/tournament")
     def replace_tournament(
-        body: dict[str, Any],
+        body: TournamentSetupDraftInput,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1)],
     ):
-        from app.domain.tournament import TournamentConfig
+        replay = workspace.idempotency.get(f"setup:{idempotency_key}")
+        if replay is not None:
+            return replay
+        if workspace.tournament is None:
+            raise APIProblem(
+                status=409,
+                code="tournament_not_found",
+                title="No active tournament",
+                detail="Create or load a tournament before editing setup.",
+            )
+        if body.expected_revision != workspace.tournament.revision:
+            raise APIProblem(
+                status=409,
+                code="stale_tournament_revision",
+                title="Tournament revision is stale",
+                detail="Reload the latest saved setup before applying these changes.",
+                retryable=True,
+            )
+        window_days = (body.end_date - body.start_date).days + 1
+        if not 7 <= window_days <= 21:
+            raise APIProblem(
+                status=422,
+                code="invalid_tournament_window",
+                title="Tournament window is invalid",
+                detail="Choose a tournament window between 7 and 21 calendar days inclusive.",
+            )
+        if any(day < body.start_date or day > body.end_date for day in body.blackout_dates):
+            raise APIProblem(
+                status=422,
+                code="invalid_blackout_date",
+                title="Blackout date is outside the tournament",
+                detail="Every blackout date must fall inside the tournament window.",
+            )
+        if len({venue.iana_time_zone for venue in body.venues}) != 1:
+            raise APIProblem(
+                status=422,
+                code="venue_timezone_mismatch",
+                title="Venue timezones do not match",
+                detail="Version 1 requires both venues to use the same IANA timezone.",
+            )
+        from app.scheduling.slot_patterns import expand_slot_patterns
 
-        workspace.tournament = TournamentConfig.model_validate(body)
-        return workspace.tournament
+        workspace.tournament = expand_slot_patterns(
+            workspace.tournament,
+            body,
+            now=datetime.now(UTC),
+        )
+        workspace.setup_draft = setup_state_from_input(body)
+        workspace.constraint_confirmation = None
+        result = setup_view(workspace.tournament, workspace.setup_draft).model_dump(mode="json")
+        workspace.idempotency[f"setup:{idempotency_key}"] = result
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="tournament_setup_saved",
+                summary="Organizer saved tournament setup changes.",
+                structured_payload={
+                    "revision": workspace.tournament.revision,
+                    "slot_count": len(workspace.tournament.slots),
+                },
+            )
+        return result
 
     @router.patch("/tournament")
     def patch_tournament(
@@ -336,20 +408,51 @@ def build_v1_router(
 
     @router.post("/tournament/precheck")
     def precheck_tournament(
-        body: dict[str, Any],
+        body: PrecheckInput,
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ) -> dict[str, object]:
-        del body
+        from app.api.readiness import run_workspace_precheck
         from app.domain.tournament import TournamentStatus
 
-        ready = (
-            workspace.tournament is not None
-            and workspace.tournament.status is TournamentStatus.READY_TO_SCHEDULE
-            and workspace.constraint_confirmation is not None
+        if workspace.tournament is None:
+            raise APIProblem(
+                status=409,
+                code="tournament_not_ready",
+                title="Tournament is not ready",
+                detail="Create or load a tournament before checking readiness.",
+            )
+        if body.expected_revision != workspace.tournament.revision:
+            raise APIProblem(
+                status=409,
+                code="stale_tournament_revision",
+                title="Tournament revision is stale",
+                detail="Reload the latest setup before checking readiness.",
+                retryable=True,
+            )
+        confirmed_revision = (
+            workspace.constraint_confirmation.get("confirmed_revision")
+            if workspace.constraint_confirmation
+            else None
         )
+        confirmed = (
+            workspace.tournament.status is TournamentStatus.READY_TO_SCHEDULE
+            and confirmed_revision == workspace.tournament.revision
+        )
+        if not confirmed:
+            return {
+                "ready": False,
+                "revision": workspace.tournament.revision,
+                "violations": ["constraints_not_confirmed"],
+                "evidence": [],
+                "remedies": [],
+            }
+        result = run_workspace_precheck(workspace)
         return {
-            "ready": ready,
-            "violations": [] if ready else ["constraints_not_confirmed"],
+            "ready": result.can_solve,
+            "revision": workspace.tournament.revision,
+            "violations": [item.code for item in result.evidence],
+            "evidence": [item.model_dump(mode="json") for item in result.evidence],
+            "remedies": [item.model_dump(mode="json") for item in result.remedies],
         }
 
     @router.post("/weather/refresh")

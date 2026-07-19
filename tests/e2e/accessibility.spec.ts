@@ -51,11 +51,8 @@ test("workspace skip navigation and focus indicator work from the keyboard", asy
 
 test("comparison and recovery states use semantic text rather than color alone", async ({ page }) => {
   await page.goto("/workspace/options");
-  await expect(
-    page.getByRole("heading", { name: "Compare the trade-offs, fixture by fixture." }),
-  ).toBeVisible();
-  await expect(page.getByText("Independent validation passed").first()).toBeVisible();
-  await expect(page.getByText("Weather coverage").first()).toBeVisible();
+  await expect(page.getByText("No generated options yet")).toBeVisible();
+  await expect(page.getByText(/Complete Setup and choose Confirm and generate schedules/i)).toBeVisible();
 
   await page.goto("/workspace/recovery/diff");
   await expect(page.getByText(/preserved/i).first()).toBeVisible();

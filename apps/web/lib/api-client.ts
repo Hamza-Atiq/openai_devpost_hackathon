@@ -1,3 +1,5 @@
+import type { TournamentSetupSaveInput, TournamentSetupView } from "./setup-contract";
+
 export type ProblemDetails = {
   type: string;
   title: string;
@@ -68,6 +70,24 @@ export type OfficialScheduleVersion = {
   version_number: number;
   approved_draft_id: string;
   approved_at: string;
+};
+
+export type OfficialFixtureResponse = {
+  id: string;
+  code: string;
+  stage: "group" | "semifinal" | "final";
+  home: string;
+  away: string;
+  venue: string;
+  starts_at: string;
+  ends_at: string;
+  timezone: string;
+  validation: "valid";
+};
+
+export type OfficialScheduleResponse = OfficialScheduleVersion & {
+  validation_valid: true;
+  fixtures: OfficialFixtureResponse[];
 };
 
 export type AuditEventResponse = {
@@ -151,22 +171,52 @@ export class CrickOpsApiClient {
   }
 
   async confirmSetup(input: ConfirmSetupInput): Promise<SetupPrecheck> {
-    await this.request("/api/v1/constraints/confirm", input);
-    return this.request<SetupPrecheck>("/api/v1/tournament/precheck", {});
+    const confirmed = await this.request<{ revision: number }>(
+      "/api/v1/constraints/confirm",
+      input,
+    );
+    return this.request<SetupPrecheck>("/api/v1/tournament/precheck", {
+      expected_revision: confirmed.revision,
+    });
+  }
+
+  async getTournamentSetup(): Promise<TournamentSetupView> {
+    return this.get<TournamentSetupView>("/api/v1/tournament");
+  }
+
+  async saveTournamentSetup(
+    input: TournamentSetupSaveInput,
+  ): Promise<TournamentSetupView> {
+    return this.request<TournamentSetupView>(
+      "/api/v1/tournament",
+      input,
+      { "Idempotency-Key": crypto.randomUUID() },
+      "PUT",
+    );
   }
 
   async generateScheduleOptions(
     customPriorities?: CustomPriorities,
   ): Promise<ScheduleComparisonResponse> {
+    const accepted = await this.createScheduleRun(customPriorities);
+    return this.getScheduleComparison(accepted.run_id);
+  }
+
+  async createScheduleRun(
+    customPriorities?: CustomPriorities,
+  ): Promise<{ run_id: string }> {
     const profiles = ["balanced", "weather_first", "fairness_first"];
     if (customPriorities) profiles.push("custom");
-    const accepted = await this.request<{ run_id: string }>(
+    return this.request<{ run_id: string }>(
       "/api/v1/schedule-runs",
       { profiles, custom_priorities: customPriorities ?? null },
       { "Idempotency-Key": crypto.randomUUID() },
     );
+  }
+
+  async getScheduleComparison(runId: string): Promise<ScheduleComparisonResponse> {
     return this.get<ScheduleComparisonResponse>(
-      `/api/v1/schedule-comparisons?run_id=${encodeURIComponent(accepted.run_id)}`,
+      `/api/v1/schedule-comparisons?run_id=${encodeURIComponent(runId)}`,
     );
   }
 
@@ -242,6 +292,13 @@ export class CrickOpsApiClient {
   async getScheduleVersions(): Promise<OfficialScheduleVersion[]> {
     const response = await this.get<{ items: OfficialScheduleVersion[] }>("/api/v1/schedule-versions");
     return response.items;
+  }
+
+  async getOfficialSchedule(): Promise<OfficialScheduleResponse | null> {
+    const response = await this.get<{ official: OfficialScheduleResponse | null }>(
+      "/api/v1/official-schedule",
+    );
+    return response.official;
   }
 
   async getAuditEvents(): Promise<{ items: AuditEventResponse[]; next_cursor: string | null; has_more: boolean }> {

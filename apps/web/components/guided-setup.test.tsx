@@ -22,7 +22,7 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("Constraint Ledger");
     expect(markup).toContain("Hard rule");
     expect(markup).toContain("Preferred");
-    expect(markup).toContain("Confirm hard constraints");
+    expect(markup).toContain("Confirm and generate schedules");
     expect(markup).toContain("Confirmation pending");
     expect(markup).toContain('aria-live="polite"');
   });

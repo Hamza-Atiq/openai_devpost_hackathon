@@ -13,6 +13,7 @@ from pydantic import Field, model_validator
 from app.api.audit import append_audit_event
 from app.api.operations import OperationsState
 from app.api.problems import APIProblem
+from app.api.readiness import minimum_rest_minutes, run_workspace_precheck
 from app.api.routes import require_workspace
 from app.api.workspace import GuestWorkspace
 from app.domain.common import DomainModel
@@ -257,6 +258,35 @@ def build_schedule_router(
                 detail="Refresh the workspace before starting another schedule run.",
                 retryable=True,
             )
+        from app.domain.tournament import TournamentStatus
+
+        confirmed_revision = (
+            workspace.constraint_confirmation.get("confirmed_revision")
+            if workspace.constraint_confirmation
+            else None
+        )
+        if (
+            workspace.tournament.status is not TournamentStatus.READY_TO_SCHEDULE
+            or confirmed_revision != workspace.tournament.revision
+        ):
+            raise APIProblem(
+                status=409,
+                code="constraints_not_confirmed",
+                title="Hard constraints are not confirmed",
+                detail="Review and confirm the latest saved setup before generation.",
+            )
+        precheck = run_workspace_precheck(workspace)
+        if not precheck.can_solve:
+            evidence = " ".join(item.message for item in precheck.evidence)
+            raise APIProblem(
+                status=422,
+                code="schedule_precheck_failed",
+                title="Tournament setup is infeasible",
+                detail=(
+                    "Available capacity or chronology cannot satisfy the tournament. "
+                    f"{evidence}"
+                ),
+            )
         requested = {value.replace("_", "-") for value in body.profiles}
         required = {"balanced", "weather-first", "fairness-first"}
         if not required.issubset(requested):
@@ -324,6 +354,7 @@ def build_schedule_router(
                 generated_at=datetime.now(UTC),
                 metric_evaluator=_metric_evaluator(workspace, matches),
                 component_penalties=_component_penalties(workspace, matches, eligibility),
+                minimum_rest_minutes=minimum_rest_minutes(workspace),
                 custom_priorities=(
                     body.custom_priorities.model_dump(exclude={"schema_version"})
                     if body.custom_priorities is not None
@@ -689,6 +720,82 @@ def build_schedule_router(
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ):
         return {"items": tuple(reversed(workspace.official_versions))}
+
+    @router.get("/official-schedule")
+    def read_official_schedule(
+        workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
+    ):
+        if not workspace.official_versions:
+            return {"official": None}
+        tournament = workspace.tournament
+        if tournament is None:
+            raise APIProblem(
+                status=409,
+                code="official_schedule_unavailable",
+                title="Official schedule is unavailable",
+                detail="The official version has no active tournament configuration.",
+            )
+        version = workspace.official_versions[-1]
+        draft_id = str(version["approved_draft_id"])
+        option = workspace.drafts.get(draft_id)
+        if option is None or not option.validation_report.valid:
+            raise APIProblem(
+                status=409,
+                code="official_schedule_unavailable",
+                title="Official schedule is unavailable",
+                detail="The approved schedule could not be verified from workspace state.",
+            )
+
+        matches = generate_match_graph(tournament)
+        placement_by_match = {placement.match_id: placement for placement in option.placements}
+        team_name = {str(team.id): team.display_name for team in tournament.teams}
+        venue_by_id = {venue.id: venue for venue in tournament.venues}
+
+        def participant_label(value: str) -> str:
+            return {
+                "A1": "Group A Winner",
+                "A2": "Group A Runner-up",
+                "B1": "Group B Winner",
+                "B2": "Group B Runner-up",
+                "SF1 Winner": "Semifinal 1 Winner",
+                "SF2 Winner": "Semifinal 2 Winner",
+            }.get(value, team_name.get(value, value))
+
+        fixtures: list[dict[str, object]] = []
+        for match in matches:
+            placement = placement_by_match[match.id]
+            venue = venue_by_id[placement.venue_id]
+            time_zone = ZoneInfo(venue.iana_time_zone)
+            code = (
+                f"G{match.sequence:02d}"
+                if match.stage is MatchStage.GROUP
+                else "SF1"
+                if match.sequence == 13
+                else "SF2"
+                if match.sequence == 14
+                else "F1"
+            )
+            fixtures.append(
+                {
+                    "id": str(match.id),
+                    "code": code,
+                    "stage": match.stage,
+                    "home": participant_label(match.participant_a),
+                    "away": participant_label(match.participant_b),
+                    "venue": venue.display_name,
+                    "starts_at": placement.starts_at_utc.astimezone(time_zone).isoformat(),
+                    "ends_at": placement.ends_at_utc.astimezone(time_zone).isoformat(),
+                    "timezone": venue.iana_time_zone,
+                    "validation": "valid",
+                }
+            )
+        return {
+            "official": {
+                **version,
+                "validation_valid": True,
+                "fixtures": fixtures,
+            }
+        }
 
     @router.post("/schedule-edits", status_code=201)
     def create_edit(

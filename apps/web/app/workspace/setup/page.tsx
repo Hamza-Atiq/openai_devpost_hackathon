@@ -1,5 +1,5 @@
 import { DirectorPanel } from "@/components/director-panel";
-import { GuidedSetup } from "@/components/guided-setup";
+import { GuidedSetupLive } from "@/components/guided-setup-live";
 import { WorkspaceShell } from "@/components/workspace-shell";
 
 export default function SetupPage() {
@@ -19,7 +19,7 @@ export default function SetupPage() {
           <li><b>04</b><span>Constraints</span></li>
         </ol>
       </section>
-      <GuidedSetup />
+      <GuidedSetupLive />
     </WorkspaceShell>
   );
 }

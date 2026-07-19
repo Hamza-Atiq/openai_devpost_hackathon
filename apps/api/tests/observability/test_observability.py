@@ -114,6 +114,15 @@ def test_real_schedule_operation_resolves_by_one_correlation_id_across_layers() 
         json={"sample_id": "global-community-cup"},
     )
     assert created.status_code == 201
+    confirmed = client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": created.json()["tournament"]["revision"],
+            "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+        },
+    )
+    assert confirmed.status_code == 200
 
     generated = client.post(
         "/api/v1/schedule-runs",

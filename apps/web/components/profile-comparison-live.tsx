@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { CrickOpsApiClient, type CustomPriorities } from "@/lib/api-client";
 
 import { ProfileComparison, type ComparisonOption } from "./profile-comparison";
@@ -11,11 +12,24 @@ const labels = {
   custom: "Custom schedule",
 } as const;
 
-export function ProfileComparisonLive() {
-  async function generate(priorities?: Record<string, number>) {
-    const response = await new CrickOpsApiClient().generateScheduleOptions(
-      priorities as CustomPriorities | undefined,
+type LoadedComparison = Awaited<ReturnType<CrickOpsApiClient["getScheduleComparison"]>>;
+
+export function ProfileComparisonLive({ initialRunId }: { initialRunId?: string }) {
+  const [loaded, setLoaded] = useState<LoadedComparison | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(initialRunId));
+
+  useEffect(() => {
+    if (!initialRunId) return;
+    let active = true;
+    new CrickOpsApiClient().getScheduleComparison(initialRunId).then(
+      (response) => { if (active) { setLoaded(response); setLoading(false); } },
+      (error: unknown) => { if (active) { setLoadError(error instanceof Error ? error.message : "The generated options could not be loaded."); setLoading(false); } },
     );
+    return () => { active = false; };
+  }, [initialRunId]);
+
+  function mapComparison(response: LoadedComparison) {
     const options: ComparisonOption[] = response.options.map((option) => ({
       draftId: option.draft_id,
       profile: option.profile,
@@ -37,10 +51,23 @@ export function ProfileComparisonLive() {
     return { options, identicalProfiles };
   }
 
+  async function generate(priorities?: Record<string, number>) {
+    const response = await new CrickOpsApiClient().generateScheduleOptions(
+      priorities as CustomPriorities | undefined,
+    );
+    return mapComparison(response);
+  }
+
   async function approve(draftId: string) {
     const version = await new CrickOpsApiClient().approveSchedule(draftId);
     return { versionNumber: version.version_number, approvedAt: version.approved_at };
   }
 
-  return <ProfileComparison onGenerate={generate} onApprove={approve} />;
+  if (loading) return <div className="operation-status" role="status">Loading validated schedule options…</div>;
+  if (loadError) return <div className="operation-status operation-status-error" role="alert"><strong>Options could not be loaded</strong><p>{loadError}</p></div>;
+  if (!loaded && initialRunId) return null;
+  if (!loaded) return <div className="operation-status"><strong>No generated options yet</strong><p>Complete Setup and choose Confirm and generate schedules.</p></div>;
+
+  const comparison = mapComparison(loaded);
+  return <ProfileComparison options={comparison.options} identicalProfiles={comparison.identicalProfiles} onGenerate={generate} onApprove={approve} />;
 }

@@ -150,6 +150,17 @@ def test_generation_limit_returns_reset_time_without_mutating_workspace() -> Non
     client = TestClient(app, base_url="https://testserver")
     client.post("/api/v1/workspaces", json={"sample_id": "global-community-cup"})
     workspace = next(iter(app.state.workspace_store._items.values()))
+    client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": workspace.tournament.revision,
+            "selection": {
+                "match_format_preset": "T20",
+                "allocation_minutes": 240,
+            },
+        },
+    )
 
     response = client.post(
         "/api/v1/schedule-runs",

@@ -103,7 +103,11 @@ def test_tournament_update_rejects_unsupported_format_as_problem_details() -> No
     response = client.put("/api/v1/tournament", json=tournament)
 
     assert response.status_code == 422
-    assert response.json()["code"] == "invalid_tournament"
+    assert response.json()["code"] == "request_validation_failed"
+    assert any(
+        error["location"][-1] == "match_format_preset"
+        for error in response.json()["field_errors"]
+    )
 
 
 def test_constraint_confirmation_persists_ready_state_and_rejects_stale_revision() -> None:

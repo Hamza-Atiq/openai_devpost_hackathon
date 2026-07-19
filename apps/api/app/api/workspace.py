@@ -11,6 +11,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
+from app.api.setup_models import TournamentSetupState
 from app.domain.tournament import TournamentConfig
 from app.persistence.models import GuestWorkspace as PersistedWorkspace
 from app.persistence.models import WorkspaceSnapshot
@@ -41,6 +42,7 @@ class GuestWorkspace:
     schedule_diffs: dict[str, dict[str, object]] = field(default_factory=dict)
     feedback: list[dict[str, object]] = field(default_factory=list)
     constraint_confirmation: dict[str, object] | None = None
+    setup_draft: TournamentSetupState | None = None
     audit_events: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -90,6 +92,7 @@ def _workspace_payload(workspace: GuestWorkspace) -> dict[str, Any]:
             "schedule_diffs": workspace.schedule_diffs,
             "feedback": workspace.feedback,
             "constraint_confirmation": workspace.constraint_confirmation,
+            "setup_draft": workspace.setup_draft,
             "audit_events": workspace.audit_events,
         }
     )
@@ -121,6 +124,11 @@ def _workspace_from_payload(workspace_id: str, payload: dict[str, Any]) -> Guest
         schedule_diffs=dict(payload.get("schedule_diffs", {})),
         feedback=list(payload.get("feedback", ())),
         constraint_confirmation=payload.get("constraint_confirmation"),
+        setup_draft=(
+            TournamentSetupState.model_validate(payload["setup_draft"])
+            if payload.get("setup_draft") is not None
+            else None
+        ),
         audit_events=list(payload.get("audit_events", ())),
     )
 

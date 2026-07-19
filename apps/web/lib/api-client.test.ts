@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CrickOpsApiClient } from "./api-client";
+import type { TournamentSetupSaveInput, TournamentSetupView } from "./setup-contract";
 
 describe("CrickOpsApiClient", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -97,7 +98,56 @@ describe("CrickOpsApiClient", () => {
     expect(fetcher).toHaveBeenNthCalledWith(
       2,
       "/api/v1/tournament/precheck",
-      expect.objectContaining({ method: "POST", credentials: "same-origin" }),
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        body: JSON.stringify({ expected_revision: 4 }),
+      }),
+    );
+  });
+
+  it("loads and saves the complete revisioned setup through typed endpoints", async () => {
+    vi.stubGlobal("crypto", { randomUUID: () => "setup-save-key" });
+    const setup = {
+      name: "Pakistan Community Cricket Cup",
+      revision: 3,
+    } as TournamentSetupView;
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(setup), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ...setup, revision: 4 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const client = new CrickOpsApiClient(fetcher);
+    const update = {
+      expected_revision: 3,
+      match_format_preset: "T10",
+    } as TournamentSetupSaveInput;
+
+    await client.getTournamentSetup();
+    await client.saveTournamentSetup(update);
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/tournament",
+      expect.objectContaining({ method: "GET", cache: "no-store" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/tournament",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify(update),
+        headers: expect.objectContaining({ "Idempotency-Key": "setup-save-key" }),
+      }),
     );
   });
 

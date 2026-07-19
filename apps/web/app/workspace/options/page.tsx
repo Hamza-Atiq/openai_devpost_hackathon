@@ -4,10 +4,15 @@ import { WeatherRiskPanel } from "@/components/weather-risk-panel";
 import { WeatherModeControls } from "@/components/weather-mode-controls";
 import { WorkspaceShell } from "@/components/workspace-shell";
 
-export default function OptionsPage() {
+export default async function OptionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ run_id?: string }>;
+}) {
+  const { run_id: runId } = await searchParams;
   return (
     <WorkspaceShell director={<DirectorPanel />}>
-      <ProfileComparisonLive />
+      <ProfileComparisonLive initialRunId={runId} />
       <WeatherRiskPanel />
       <WeatherModeControls />
     </WorkspaceShell>

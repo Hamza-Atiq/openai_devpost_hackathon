@@ -8,33 +8,13 @@ type ScheduleRailProps = {
   status: "official" | "draft";
   version: number;
   repair?: boolean;
-  fixtures?: ScheduleFixtureView[];
+  fixtures: ScheduleFixtureView[];
 };
-
-const teams = ["Falcons", "Mariners", "Strikers", "Royals", "Blues", "Lions", "Titans", "United"];
-const groupFixtures: ScheduleFixtureView[] = Array.from({ length: 12 }, (_, index) => ({
-  id: `G${String(index + 1).padStart(2, "0")}`,
-  stage: "group",
-  home: teams[index % 8],
-  away: teams[(index + 3) % 8],
-  venue: index % 2 === 0 ? "National Cricket Ground" : "Riverside Oval",
-  startsAt: `2026-09-${String(7 + Math.floor(index / 2)).padStart(2, "0")}T${index % 2 === 0 ? "10:00" : "18:00"}:00+05:00`,
-  timezone: "Asia/Karachi",
-  validation: "valid",
-  change: index === 3 ? "changed" : "preserved",
-}));
-
-const defaultFixtures: ScheduleFixtureView[] = [
-  ...groupFixtures,
-  { id: "SF1", stage: "semifinal", home: "Group A Winner", away: "Group B Runner-up", venue: "National Cricket Ground", startsAt: "2026-09-15T10:00:00+05:00", timezone: "Asia/Karachi", validation: "valid", change: "preserved" },
-  { id: "SF2", stage: "semifinal", home: "Group B Winner", away: "Group A Runner-up", venue: "Riverside Oval", startsAt: "2026-09-15T18:00:00+05:00", timezone: "Asia/Karachi", validation: "valid", change: "preserved" },
-  { id: "F", stage: "final", home: "Semifinal 1 Winner", away: "Semifinal 2 Winner", venue: "National Cricket Ground", startsAt: "2026-09-18T18:00:00+05:00", timezone: "Asia/Karachi", validation: "valid", change: "new" },
-];
 
 const stageName = { group: "Group stage", semifinal: "Semifinal", final: "Final" } as const;
 const changeName = { preserved: "Preserved fixture", changed: "Changed fixture", new: "New placement" } as const;
 
-export function ScheduleRail({ status, version, repair = false, fixtures = defaultFixtures }: ScheduleRailProps) {
+export function ScheduleRail({ status, version, repair = false, fixtures }: ScheduleRailProps) {
   const groups = groupFixturesByLocalDate(fixtures);
   const timezone = fixtures[0]?.timezone ?? "Asia/Karachi";
 
@@ -47,7 +27,7 @@ export function ScheduleRail({ status, version, repair = false, fixtures = defau
           <p>{status === "official" ? "Official workspace schedule" : "Draft repair — not official"} · Version {version}</p>
         </div>
         <div className="schedule-controls">
-          <label>Schedule version<select defaultValue={String(version)}><option value="2">Version 2 — official</option><option value="3">Version 3 — draft</option></select></label>
+          <span className="schedule-version-label">Version {version} · {status === "official" ? "official" : "draft"}</span>
           <span className="validation-badge"><b aria-hidden="true">✓</b> Independently validated</span>
         </div>
       </header>
@@ -66,7 +46,7 @@ export function ScheduleRail({ status, version, repair = false, fixtures = defau
             <li className="rail-day" key={group.date}>
               {stage === "semifinal" && priorStage === "group" && <div className="stage-gate" role="note"><span>Stage gate</span><strong>Group stage complete</strong><small>All 12 group fixtures finish before either semifinal begins.</small></div>}
               {stage === "final" && priorStage === "semifinal" && <div className="stage-gate" role="note"><span>Stage gate</span><strong>Semifinals complete</strong><small>Both semifinal allocations finish before the final begins.</small></div>}
-              <div className="day-label"><time dateTime={group.date}>{new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "2-digit", month: "short", timeZone: timezone }).format(new Date(`${group.date}T12:00:00+05:00`))}</time><span>{stageName[stage]}</span></div>
+              <div className="day-label"><time dateTime={group.date}>{new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "2-digit", month: "short", timeZone: timezone }).format(new Date(group.fixtures[0].startsAt))}</time><span>{stageName[stage]}</span></div>
               <div className="day-fixtures">
                 {group.fixtures.map((fixture) => (
                   <article className={`fixture-card fixture-${fixture.change}`} key={fixture.id}>

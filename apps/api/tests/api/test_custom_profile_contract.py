@@ -6,7 +6,17 @@ from fastapi.testclient import TestClient
 
 def _client() -> TestClient:
     client = TestClient(create_app(), base_url="https://testserver")
-    client.post("/api/v1/workspaces", json={"sample_id": "global-community-cup"})
+    created = client.post(
+        "/api/v1/workspaces", json={"sample_id": "global-community-cup"}
+    ).json()
+    client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": created["tournament"]["revision"],
+            "selection": {"match_format_preset": "T20", "allocation_minutes": 240},
+        },
+    )
     return client
 
 
