@@ -9,6 +9,8 @@ from fastapi import FastAPI, Request
 from app.agents.provider import AgentProviderRouter
 from app.agents.runtime import DirectorRuntime
 from app.agents.schemas import AgentMode
+from app.agents.specialist_evidence import build_specialist_request
+from app.agents.specialist_runtime import SpecialistRuntime
 from app.api.director import DirectorRuntimeProtocol, build_director_router
 from app.api.operations import OperationsState, build_operations_router
 from app.api.problems import install_problem_handlers
@@ -101,13 +103,22 @@ def create_app(
         provider="openai" if primary_agent_available else None,
         model="gpt-5.6" if primary_agent_available else None,
     )
+    application.state.specialist_runtime = None
     if director_runtime is None and primary_agent_available and server_settings is not None:
-        director_runtime = DirectorRuntime(
-            provider_router=AgentProviderRouter(
-                openai_api_key=server_settings.openai_api_key or ""
-            ),
+        provider_router = AgentProviderRouter(
+            openai_api_key=server_settings.openai_api_key or ""
+        )
+        application.state.specialist_runtime = SpecialistRuntime(
+            provider_router=provider_router,
             retries_allowed=lambda: application.state.demo_protection.nonessential_retries_allowed,
             agent_work_allowed=lambda: application.state.demo_protection.agent_work_allowed,
+        )
+        director_runtime = DirectorRuntime(
+            provider_router=provider_router,
+            retries_allowed=lambda: application.state.demo_protection.nonessential_retries_allowed,
+            agent_work_allowed=lambda: application.state.demo_protection.agent_work_allowed,
+            specialist_runtime=application.state.specialist_runtime,
+            specialist_request_builder=build_specialist_request,
         )
     application.state.director_runtime = director_runtime
     application.include_router(

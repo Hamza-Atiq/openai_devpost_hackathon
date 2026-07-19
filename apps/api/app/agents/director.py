@@ -18,6 +18,7 @@ class DirectorTurnInput(DomainModel):
     user_message: str = Field(min_length=1, max_length=4000)
     pending_actions: tuple[str, ...] = ()
     mode: AgentMode
+    specialist_evidence: tuple[Mapping[str, object], ...] = ()
 
 
 class ProposedStateChange(DomainModel):

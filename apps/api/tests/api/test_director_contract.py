@@ -26,6 +26,7 @@ def test_production_runtime_selects_primary_openai_mode() -> None:
     assert application.state.operations.mode is AgentMode.GPT_5_6
     assert application.state.operations.provider == "openai"
     assert application.state.operations.model == "gpt-5.6"
+    assert application.state.specialist_runtime is not None
 
 
 def test_emergency_switch_keeps_production_runtime_deterministic() -> None:
@@ -59,6 +60,35 @@ class StubDirectorRuntime:
                 }
             ],
             "specialist_requests": [],
+            "specialist_evidence": [
+                {
+                    "available": True,
+                    "role": "rules_constraint",
+                    "mode": "gpt-5.6",
+                    "provider": "openai",
+                    "model": "gpt-5.6",
+                    "occurred_at": "2026-07-19T12:00:00Z",
+                    "tournament_revision": workspace.tournament.revision,
+                    "invocation_reason": "Interpret preferred evening timing",
+                    "validation_status": "valid",
+                    "evidence_refs": [],
+                    "tool_outcomes": [
+                        {
+                            "tool_name": "constraint_precheck",
+                            "status": "validated",
+                            "deterministic_authority": True,
+                            "validation_status": "valid",
+                            "output_digest": "abc123",
+                            "failure_code": None,
+                        }
+                    ],
+                    "consumed_fields": ["current_constraints"],
+                    "output": {},
+                    "organizer_summary": "Interpreted one preferred constraint.",
+                    "attempt_count": 1,
+                    "transitions": ["primary_active"],
+                }
+            ],
             "evidence_refs": [
                 {
                     "evidence_id": "workspace-current",
@@ -111,6 +141,9 @@ def test_director_turn_invokes_runtime_and_audits_safe_provenance() -> None:
         "model": "gpt-5.6",
         "validation_status": "valid",
     }
+    specialist = audit[0]["structured_payload"]["specialist_evidence"][0]
+    assert specialist["role"] == "rules_constraint"
+    assert specialist["tool_outcomes"][0]["status"] == "validated"
 
 
 def test_director_turn_in_deterministic_mode_never_fabricates_a_reply() -> None:

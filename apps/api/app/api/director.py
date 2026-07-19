@@ -109,6 +109,7 @@ def build_director_router(
             structured_payload={
                 "mode": result.mode,
                 "attempt_count": result.attempt_count,
+                "specialist_evidence": result.specialist_evidence,
             },
             actor_type="system",
             agent_provenance=provenance,
