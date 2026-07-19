@@ -68,3 +68,47 @@ def test_official_schedule_returns_backend_owned_validated_fixture_views() -> No
         fixture["home"] for fixture in official["fixtures"][:12]
     } | {fixture["away"] for fixture in official["fixtures"][:12]}
     assert not any(len(name) == 36 and name.count("-") == 4 for name in group_names)
+
+
+def test_owner_can_browse_superseded_version_without_restoring_it() -> None:
+    client = _client()
+    tournament = client.get("/api/v1/tournament").json()
+    client.post(
+        "/api/v1/constraints/confirm",
+        json={
+            "confirmation": True,
+            "expected_revision": tournament["revision"],
+            "selection": {
+                "match_format_preset": tournament["match_format_preset"],
+                "allocation_minutes": tournament["allocation_minutes"],
+            },
+        },
+    )
+    accepted = client.post(
+        "/api/v1/schedule-runs",
+        headers={"Idempotency-Key": "history-generation"},
+        json={"profiles": ["balanced", "weather_first", "fairness_first"]},
+    ).json()
+    drafts = client.get(f"/api/v1/schedule-runs/{accepted['run_id']}").json()[
+        "draft_ids"
+    ]
+    first = client.post(
+        f"/api/v1/schedule-drafts/{drafts[0]}/approve",
+        headers={"Idempotency-Key": "history-approval-1"},
+        json={"confirmation": True},
+    ).json()
+    current = client.post(
+        f"/api/v1/schedule-drafts/{drafts[1]}/approve",
+        headers={"Idempotency-Key": "history-approval-2"},
+        json={"confirmation": True},
+    ).json()
+
+    historical = client.get(f"/api/v1/schedule-versions/{first['version_id']}")
+    official = client.get("/api/v1/official-schedule").json()["official"]
+
+    assert historical.status_code == 200
+    assert historical.json()["version_number"] == 1
+    assert historical.json()["current_official"] is False
+    assert len(historical.json()["fixtures"]) == 15
+    assert official["version_id"] == current["version_id"]
+    assert official["current_official"] is True

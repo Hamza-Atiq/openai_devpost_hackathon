@@ -5,7 +5,7 @@ import {
 } from "@/lib/schedule-view";
 
 type ScheduleRailProps = {
-  status: "official" | "draft";
+  status: "official" | "historical" | "draft";
   version: number;
   repair?: boolean;
   fixtures: ScheduleFixtureView[];
@@ -24,16 +24,16 @@ export function ScheduleRail({ status, version, repair = false, fixtures }: Sche
         <div>
           <p className="eyebrow">Schedule control</p>
           <h1 id="schedule-title">The Schedule Rail</h1>
-          <p>{status === "official" ? "Official workspace schedule" : "Draft repair — not official"} · Version {version}</p>
+          <p>{status === "official" ? "Official workspace schedule" : status === "historical" ? "Historical official schedule · read only" : "Draft repair — not official"} · Version {version}</p>
         </div>
         <div className="schedule-controls">
-          <span className="schedule-version-label">Version {version} · {status === "official" ? "official" : "draft"}</span>
+          <span className="schedule-version-label">Version {version} · {status === "official" ? "current official" : status}</span>
           <span className="validation-badge"><b aria-hidden="true">✓</b> Independently validated</span>
         </div>
       </header>
 
       <div className="rail-key" aria-label="Schedule legend">
-        <span><i className="key-official" aria-hidden="true" />{status === "official" ? "Official baseline" : "Draft candidate"}</span>
+        <span><i className="key-official" aria-hidden="true" />{status === "official" ? "Official baseline" : status === "historical" ? "Superseded official version" : "Draft candidate"}</span>
         {repair && <><span><i className="key-preserved" aria-hidden="true" />Preserved fixture</span><span><i className="key-changed" aria-hidden="true" />Changed fixture</span></>}
         <span className="timezone-key">Local times · {timezone}</span>
       </div>

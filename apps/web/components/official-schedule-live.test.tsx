@@ -19,6 +19,7 @@ describe("official schedule live view", () => {
           version_number: 1,
           approved_draft_id: "draft-1",
           approved_at: "2026-09-01T10:00:00Z",
+          current_official: true,
           validation_valid: true,
           fixtures: [{
             id: "match-1",
@@ -40,5 +41,25 @@ describe("official schedule live view", () => {
     expect(markup).toContain("Version 1");
     expect(markup).toContain("Canal Kings");
     expect(markup).not.toContain("Falcons");
+  });
+
+  it("labels current and superseded versions without restoring them", () => {
+    const markup = renderToStaticMarkup(
+      <OfficialScheduleLive
+        initialSchedule={{
+          version_id: "version-2", version_number: 2, approved_draft_id: "draft-2",
+          approved_at: "2026-09-02T10:00:00Z", current_official: true,
+          validation_valid: true, fixtures: [],
+        }}
+        initialVersions={[
+          { version_id: "version-2", version_number: 2, approved_draft_id: "draft-2", approved_at: "2026-09-02T10:00:00Z" },
+          { version_id: "version-1", version_number: 1, approved_draft_id: "draft-1", approved_at: "2026-09-01T10:00:00Z" },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain("Browse official history");
+    expect(markup).toContain("Version 1 · superseded");
+    expect(markup).toContain("Version 2 · current official");
   });
 });

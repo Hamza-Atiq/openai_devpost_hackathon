@@ -250,6 +250,74 @@ def _component_penalties(
     return penalties
 
 
+def _schedule_version_view(
+    workspace: GuestWorkspace, version: Mapping[str, object]
+) -> dict[str, object]:
+    tournament = workspace.tournament
+    option = workspace.drafts.get(str(version["approved_draft_id"]))
+    if tournament is None or option is None or not option.validation_report.valid:
+        raise APIProblem(
+            status=409,
+            code="official_schedule_unavailable",
+            title="Official schedule is unavailable",
+            detail="The approved schedule could not be verified from workspace state.",
+        )
+    matches = generate_match_graph(tournament)
+    placement_by_match = {placement.match_id: placement for placement in option.placements}
+    team_name = {str(team.id): team.display_name for team in tournament.teams}
+    venue_by_id = {venue.id: venue for venue in tournament.venues}
+
+    def participant_label(value: str) -> str:
+        return {
+            "A1": "Group A Winner",
+            "A2": "Group A Runner-up",
+            "B1": "Group B Winner",
+            "B2": "Group B Runner-up",
+            "SF1 Winner": "Semifinal 1 Winner",
+            "SF2 Winner": "Semifinal 2 Winner",
+        }.get(value, team_name.get(value, value))
+
+    fixtures: list[dict[str, object]] = []
+    for match in matches:
+        placement = placement_by_match[match.id]
+        venue = venue_by_id[placement.venue_id]
+        time_zone = ZoneInfo(venue.iana_time_zone)
+        code = (
+            f"G{match.sequence:02d}"
+            if match.stage is MatchStage.GROUP
+            else "SF1"
+            if match.sequence == 13
+            else "SF2"
+            if match.sequence == 14
+            else "F1"
+        )
+        fixtures.append(
+            {
+                "id": str(match.id),
+                "slot_id": str(placement.slot_id),
+                "code": code,
+                "stage": match.stage,
+                "home": participant_label(match.participant_a),
+                "away": participant_label(match.participant_b),
+                "venue": venue.display_name,
+                "starts_at": placement.starts_at_utc.astimezone(time_zone).isoformat(),
+                "ends_at": placement.ends_at_utc.astimezone(time_zone).isoformat(),
+                "timezone": venue.iana_time_zone,
+                "validation": "valid",
+            }
+        )
+    return {
+        **version,
+        "current_official": bool(
+            workspace.official_versions
+            and str(workspace.official_versions[-1]["version_id"])
+            == str(version["version_id"])
+        ),
+        "validation_valid": True,
+        "fixtures": fixtures,
+    }
+
+
 def build_schedule_router(
     operations: OperationsState | None = None,
     demo_protection: PublicDemoProtection | None = None,
@@ -857,82 +925,36 @@ def build_schedule_router(
     ):
         return {"items": tuple(reversed(workspace.official_versions))}
 
+    @router.get("/schedule-versions/{version_id}")
+    def read_schedule_version(
+        version_id: str,
+        workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
+    ):
+        version = next(
+            (
+                item
+                for item in workspace.official_versions
+                if str(item["version_id"]) == version_id
+            ),
+            None,
+        )
+        if version is None:
+            raise APIProblem(
+                status=404,
+                code="schedule_version_not_found",
+                title="Schedule version not found",
+                detail="The requested official version does not belong to this workspace.",
+            )
+        return _schedule_version_view(workspace, version)
+
     @router.get("/official-schedule")
     def read_official_schedule(
         workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
     ):
         if not workspace.official_versions:
             return {"official": None}
-        tournament = workspace.tournament
-        if tournament is None:
-            raise APIProblem(
-                status=409,
-                code="official_schedule_unavailable",
-                title="Official schedule is unavailable",
-                detail="The official version has no active tournament configuration.",
-            )
         version = workspace.official_versions[-1]
-        draft_id = str(version["approved_draft_id"])
-        option = workspace.drafts.get(draft_id)
-        if option is None or not option.validation_report.valid:
-            raise APIProblem(
-                status=409,
-                code="official_schedule_unavailable",
-                title="Official schedule is unavailable",
-                detail="The approved schedule could not be verified from workspace state.",
-            )
-
-        matches = generate_match_graph(tournament)
-        placement_by_match = {placement.match_id: placement for placement in option.placements}
-        team_name = {str(team.id): team.display_name for team in tournament.teams}
-        venue_by_id = {venue.id: venue for venue in tournament.venues}
-
-        def participant_label(value: str) -> str:
-            return {
-                "A1": "Group A Winner",
-                "A2": "Group A Runner-up",
-                "B1": "Group B Winner",
-                "B2": "Group B Runner-up",
-                "SF1 Winner": "Semifinal 1 Winner",
-                "SF2 Winner": "Semifinal 2 Winner",
-            }.get(value, team_name.get(value, value))
-
-        fixtures: list[dict[str, object]] = []
-        for match in matches:
-            placement = placement_by_match[match.id]
-            venue = venue_by_id[placement.venue_id]
-            time_zone = ZoneInfo(venue.iana_time_zone)
-            code = (
-                f"G{match.sequence:02d}"
-                if match.stage is MatchStage.GROUP
-                else "SF1"
-                if match.sequence == 13
-                else "SF2"
-                if match.sequence == 14
-                else "F1"
-            )
-            fixtures.append(
-                {
-                    "id": str(match.id),
-                    "slot_id": str(placement.slot_id),
-                    "code": code,
-                    "stage": match.stage,
-                    "home": participant_label(match.participant_a),
-                    "away": participant_label(match.participant_b),
-                    "venue": venue.display_name,
-                    "starts_at": placement.starts_at_utc.astimezone(time_zone).isoformat(),
-                    "ends_at": placement.ends_at_utc.astimezone(time_zone).isoformat(),
-                    "timezone": venue.iana_time_zone,
-                    "validation": "valid",
-                }
-            )
-        return {
-            "official": {
-                **version,
-                "validation_valid": True,
-                "fixtures": fixtures,
-            }
-        }
+        return {"official": _schedule_version_view(workspace, version)}
 
     @router.post("/schedule-edits", status_code=201)
     def create_edit(

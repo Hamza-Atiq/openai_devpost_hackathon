@@ -143,6 +143,7 @@ export type ScheduleDiffResponse = {
 };
 
 export type OfficialScheduleResponse = OfficialScheduleVersion & {
+  current_official: boolean;
   validation_valid: true;
   fixtures: OfficialFixtureResponse[];
 };
@@ -389,6 +390,12 @@ export class CrickOpsApiClient {
   async getScheduleVersions(): Promise<OfficialScheduleVersion[]> {
     const response = await this.get<{ items: OfficialScheduleVersion[] }>("/api/v1/schedule-versions");
     return response.items;
+  }
+
+  async getScheduleVersion(versionId: string): Promise<OfficialScheduleResponse> {
+    return this.get<OfficialScheduleResponse>(
+      `/api/v1/schedule-versions/${encodeURIComponent(versionId)}`,
+    );
   }
 
   async getOfficialSchedule(): Promise<OfficialScheduleResponse | null> {

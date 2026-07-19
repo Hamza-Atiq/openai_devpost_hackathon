@@ -1,6 +1,7 @@
 from app.main import create_app
 from fastapi.testclient import TestClient
 
+
 class StubWeatherService:
     def refresh(self, tournament, *, mode: str, scenario_id: str | None = None):
         risks = {str(slot.id): 20.0 for slot in tournament.slots}
