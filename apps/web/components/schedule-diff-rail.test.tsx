@@ -12,6 +12,7 @@ describe("Schedule diff rail", () => {
     expect(markup).toContain("Added fixtures");
     expect(markup).toContain("Removed fixtures");
     expect(markup).toContain("Weather risk");
+    expect(markup).toContain("Weather risk improved by 4.2 points");
     expect(markup).toContain("Solver evidence");
     expect(markup).toContain("Approve repaired schedule");
     expect(markup).toContain("Reject repair");

@@ -56,7 +56,7 @@ export function SampleChooser() {
             <p className="card-label">{sample.label}</p>
             <h3>{sample.name}</h3>
             <p>{sample.detail}</p>
-            <button disabled={pending !== null} onClick={() => start(sample.id)} type="button">
+            <button aria-label={`Load ${sample.name} sample`} disabled={pending !== null} onClick={() => start(sample.id)} type="button">
               {pending === sample.id ? "Creating workspace…" : "Load sample"}
             </button>
           </article>

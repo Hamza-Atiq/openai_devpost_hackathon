@@ -9,9 +9,10 @@ type WeatherModeControlsProps = {
   initialMode?: "live" | "deterministic";
   initialProviderUnavailable?: boolean;
   initialProposal?: ThresholdProposal;
+  onModeChanged?: (status: import("@/lib/api-client").WeatherStatus) => void;
 };
 
-export function WeatherModeControls({ initialMode = "deterministic", initialProviderUnavailable = false, initialProposal }: WeatherModeControlsProps) {
+export function WeatherModeControls({ initialMode = "deterministic", initialProviderUnavailable = false, initialProposal, onModeChanged }: WeatherModeControlsProps) {
   const [mode, setMode] = useState(initialMode);
   const [providerUnavailable, setProviderUnavailable] = useState(initialProviderUnavailable);
   const [proposal, setProposal] = useState<ThresholdProposal | undefined>(initialProposal);
@@ -24,7 +25,7 @@ export function WeatherModeControls({ initialMode = "deterministic", initialProv
     setPending(true); setError(null);
     try {
       const status = next === "deterministic" ? await new CrickOpsApiClient().activateRainDemo() : await new CrickOpsApiClient().refreshWeather("live");
-      setMode(status.mode); setProviderUnavailable(status.quality === "unavailable");
+      setMode(status.mode); setProviderUnavailable(status.quality === "unavailable"); onModeChanged?.(status);
     } catch (modeError) { setError(modeError instanceof Error ? modeError.message : "Weather mode change failed."); }
     finally { setPending(false); }
   }

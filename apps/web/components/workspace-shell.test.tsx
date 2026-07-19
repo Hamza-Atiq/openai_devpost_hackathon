@@ -35,6 +35,8 @@ describe("accessible workspace entry", () => {
 
     expect(markup).toContain("Global Community Cricket Cup");
     expect(markup).toContain("Pakistan Community Cricket Cup");
+    expect(markup).toContain('aria-label="Load Global Community Cricket Cup sample"');
+    expect(markup).toContain('aria-label="Load Pakistan Community Cricket Cup sample"');
     expect(markup).toContain("Create a blank tournament");
     expect(markup).toContain("Do not enter personal, confidential, financial, or payment information");
     expect((markup.match(/<button/g) ?? []).length).toBe(3);

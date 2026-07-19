@@ -23,6 +23,10 @@ export type WeatherStatus = {
   quality: string;
   scenario_id?: string | null;
   guidance?: string;
+  coverage?: number;
+  tournament_revision?: number;
+  slot_digest?: string;
+  invalidation_reason?: string;
 };
 
 export type ScheduleWeatherResponse = {
@@ -319,6 +323,10 @@ export class CrickOpsApiClient {
 
   async refreshWeather(mode: "live" | "deterministic"): Promise<WeatherStatus> {
     return this.request<WeatherStatus>("/api/v1/weather/refresh", { mode });
+  }
+
+  async getWeather(): Promise<WeatherStatus> {
+    return this.get<WeatherStatus>("/api/v1/weather");
   }
 
   async activateRainDemo(): Promise<WeatherStatus> {

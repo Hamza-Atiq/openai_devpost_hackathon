@@ -6,7 +6,7 @@ import { CrickOpsApiClient, type ScheduleWeatherResponse } from "@/lib/api-clien
 
 import { WeatherRiskPanel } from "./weather-risk-panel";
 
-export function WeatherRiskPanelLive({ runId }: { runId?: string }) {
+export function WeatherRiskPanelLive({ runId, refreshVersion = 0 }: { runId?: string; refreshVersion?: number }) {
   const [weather, setWeather] = useState<ScheduleWeatherResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ export function WeatherRiskPanelLive({ runId }: { runId?: string }) {
         },
       );
     return () => { active = false; };
-  }, [runId]);
+  }, [runId, refreshVersion]);
 
   if (!runId) {
     return <div className="operation-status"><strong>No schedule weather yet</strong><p>Generate schedule options to view fixture-level weather evidence.</p></div>;

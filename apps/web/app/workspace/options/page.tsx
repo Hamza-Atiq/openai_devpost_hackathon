@@ -1,7 +1,6 @@
 import { DirectorPanel } from "@/components/director-panel";
 import { ProfileComparisonLive } from "@/components/profile-comparison-live";
-import { WeatherRiskPanelLive } from "@/components/weather-risk-panel-live";
-import { WeatherModeControls } from "@/components/weather-mode-controls";
+import { WeatherWorkspaceLive } from "@/components/weather-workspace-live";
 import { WorkspaceShell } from "@/components/workspace-shell";
 
 export default async function OptionsPage({
@@ -13,8 +12,7 @@ export default async function OptionsPage({
   return (
     <WorkspaceShell director={<DirectorPanel />}>
       <ProfileComparisonLive initialRunId={runId} />
-      <WeatherRiskPanelLive runId={runId} />
-      <WeatherModeControls />
+      <WeatherWorkspaceLive runId={runId} />
     </WorkspaceShell>
   );
 }
