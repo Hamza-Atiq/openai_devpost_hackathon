@@ -183,6 +183,9 @@ def build_v1_router(
         validate_bootstrap_origin(request)
         token, workspace = store.create(_load_requested_sample(body.sample_id))
         workspace.weather = sample_weather(workspace)
+        # The bootstrap request has no incoming guest cookie, so the application
+        # middleware cannot persist route-level initialization after the response.
+        store.persist(token)
         response.set_cookie(
             COOKIE_NAME,
             token,

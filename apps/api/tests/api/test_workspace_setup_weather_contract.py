@@ -200,7 +200,10 @@ class StubWeatherService:
 
 def test_sample_workspace_starts_with_real_deterministic_weather_snapshot() -> None:
     service = StubWeatherService()
-    client = api_client(create_app(weather_service=service))
+    app = create_app(weather_service=service)
+    persisted_tokens: list[str | None] = []
+    app.state.workspace_store.persist = persisted_tokens.append
+    client = api_client(app)
 
     created = client.post(
         "/api/v1/workspaces",
@@ -211,6 +214,7 @@ def test_sample_workspace_starts_with_real_deterministic_weather_snapshot() -> N
     assert created.json()["weather"]["mode"] == "deterministic"
     assert created.json()["weather"]["coverage"] == 100.0
     assert service.modes == ["deterministic"]
+    assert len(persisted_tokens) == 1
 
 
 def test_reset_demo_clears_tournament_owned_state_and_loads_the_selected_sample() -> None:
