@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from app.domain.samples import available_samples, load_sample
 
 
@@ -26,6 +28,19 @@ def test_samples_have_immediately_usable_capacity() -> None:
             and (slot.ends_at_utc - slot.starts_at_utc).total_seconds() >= 240 * 60
         ]
         assert len(usable) >= 15
+
+
+def test_samples_roll_into_forecast_horizon_with_real_repair_slack() -> None:
+    reference = date(2026, 7, 19)
+
+    for sample_id in available_samples():
+        tournament = load_sample(sample_id, reference_date=reference)
+
+        assert tournament.start_date == date(2026, 7, 22)
+        assert tournament.end_date == date(2026, 7, 31)
+        assert (tournament.end_date - reference).days <= 16
+        assert len(tournament.slots) == 28
+        assert len({(slot.venue_id, slot.starts_at_utc) for slot in tournament.slots}) == 28
 
 
 def test_sample_names_do_not_use_known_team_or_tournament_brands() -> None:

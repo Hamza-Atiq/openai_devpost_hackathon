@@ -2,8 +2,8 @@
   "sample_id": "pakistan-community-cup",
   "name": "Pakistan Community Cricket Cup",
   "match_format_preset": "T20",
-  "start_date": "2026-09-01",
-  "end_date": "2026-09-10",
+  "start_offset_days": 3,
+  "window_days": 10,
   "iana_time_zone": "Asia/Karachi",
   "team_names": [
     "Canal XI",
@@ -31,15 +31,7 @@
       "longitude": 74.3200
     }
   ],
-  "available_dates": [
-    "2026-09-01",
-    "2026-09-02",
-    "2026-09-03",
-    "2026-09-04",
-    "2026-09-05",
-    "2026-09-06",
-    "2026-09-07",
-    "2026-09-08"
-  ],
-  "local_start_time": "10:00:00"
+  "available_day_offsets": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "local_start_times": ["10:00:00", "15:00:00"],
+  "dual_start_day_count": 4
 }

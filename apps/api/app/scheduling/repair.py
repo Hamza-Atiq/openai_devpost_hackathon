@@ -67,6 +67,7 @@ def repair_schedule(
     generated_at: datetime,
     minimum_rest_minutes: int = 0,
     quality_cost_by_placement: Mapping[tuple[UUID, UUID], int] | None = None,
+    solver_time_limit_seconds: float = 5,
 ) -> RepairResult:
     change_cost = changed_count_costs(tournament, baseline)
     movement_cost = movement_costs(tournament, baseline)
@@ -78,6 +79,7 @@ def repair_schedule(
         eligible_slot_ids_by_match,
         minimum_rest_minutes=minimum_rest_minutes,
         objective_cost_by_placement=change_cost,
+        max_time_seconds=solver_time_limit_seconds,
     )
     if not isinstance(pass_one, FeasibleSolverResult):
         return RepairResult(status=RepairStatus.INFEASIBLE)
@@ -88,6 +90,7 @@ def repair_schedule(
         minimum_rest_minutes=minimum_rest_minutes,
         objective_cost_by_placement=movement_cost,
         fixed_cost_totals=((change_cost, pass_one.objective_value),),
+        max_time_seconds=solver_time_limit_seconds,
     )
     if not isinstance(pass_two, FeasibleSolverResult):
         return RepairResult(status=RepairStatus.INFEASIBLE)
@@ -101,6 +104,7 @@ def repair_schedule(
             (change_cost, pass_one.objective_value),
             (movement_cost, pass_two.objective_value),
         ),
+        max_time_seconds=solver_time_limit_seconds,
     )
     if not isinstance(pass_three, FeasibleSolverResult):
         return RepairResult(status=RepairStatus.INFEASIBLE)

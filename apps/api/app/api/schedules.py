@@ -27,6 +27,7 @@ from app.optimization.config import load_optimization_config
 from app.scheduling.comparison import compare_profile_options
 from app.scheduling.diff import build_schedule_diff
 from app.scheduling.pairings import generate_match_graph
+from app.scheduling.precheck import RemedyCode, run_pre_solver_checks
 from app.scheduling.profiles import ComponentPenalties, generate_profile_options
 from app.scheduling.repair import RepairStatus, repair_schedule
 
@@ -522,6 +523,92 @@ def build_schedule_router(
             "identical_solution_groups": comparison.identical_solution_groups,
         }
 
+    @router.get("/weather/schedule")
+    def read_schedule_weather(
+        draft_id: Annotated[str, Query(min_length=1)],
+        workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
+    ) -> dict[str, object]:
+        tournament = workspace.tournament
+        draft = workspace.drafts.get(draft_id)
+        if tournament is None or draft is None:
+            raise APIProblem(
+                status=404,
+                code="schedule_draft_not_found",
+                title="Schedule draft not found",
+                detail="The draft does not belong to this workspace.",
+            )
+        matches = generate_match_graph(tournament)
+        placement_by_match = {placement.match_id: placement for placement in draft.placements}
+        venues = {venue.id: venue for venue in tournament.venues}
+        team_names = {str(team.id): team.display_name for team in tournament.teams}
+        slot_risks = workspace.weather.get("slot_risks", {})
+        slot_details = workspace.weather.get("slot_details", {})
+        if not isinstance(slot_risks, dict):
+            slot_risks = {}
+        if not isinstance(slot_details, dict):
+            slot_details = {}
+
+        def participant_label(value: str) -> str:
+            return {
+                "A1": "Group A Winner",
+                "A2": "Group A Runner-up",
+                "B1": "Group B Winner",
+                "B2": "Group B Runner-up",
+                "SF1 Winner": "Semifinal 1 Winner",
+                "SF2 Winner": "Semifinal 2 Winner",
+            }.get(value, team_names.get(value, value))
+
+        fixtures = []
+        for match in matches:
+            placement = placement_by_match[match.id]
+            venue = venues[placement.venue_id]
+            zone = ZoneInfo(venue.iana_time_zone)
+            slot_id = str(placement.slot_id)
+            raw_detail = slot_details.get(slot_id, {})
+            detail = raw_detail if isinstance(raw_detail, dict) else {}
+            raw_risk = slot_risks.get(slot_id)
+            code = (
+                f"G{match.sequence:02d}"
+                if match.stage is MatchStage.GROUP
+                else "SF1"
+                if match.sequence == 13
+                else "SF2"
+                if match.sequence == 14
+                else "F1"
+            )
+            fixtures.append(
+                {
+                    "id": code,
+                    "label": (
+                        f"{participant_label(match.participant_a)} vs "
+                        f"{participant_label(match.participant_b)}"
+                    ),
+                    "venue": venue.display_name,
+                    "starts_at": placement.starts_at_utc.astimezone(zone).isoformat(),
+                    "timezone": venue.iana_time_zone,
+                    "risk": raw_risk,
+                    "components": detail.get("components", {}),
+                    "quality": detail.get(
+                        "quality",
+                        "complete" if raw_risk is not None else "forecast_not_yet_available",
+                    ),
+                }
+            )
+        covered = sum(item["risk"] is not None for item in fixtures)
+        coverage = round(covered / len(fixtures) * 100, 1) if fixtures else 0.0
+        return {
+            "draft_id": draft_id,
+            "mode": workspace.weather.get("mode", "live"),
+            "provider": workspace.weather.get("provider"),
+            "issued_at": workspace.weather.get("issued_at"),
+            "fetched_at": workspace.weather.get("fetched_at"),
+            "quality": workspace.weather.get("quality", "unavailable"),
+            "coverage": coverage,
+            "allocation_minutes": tournament.allocation_minutes,
+            "attribution": workspace.weather.get("attribution"),
+            "fixtures": fixtures,
+        }
+
     @router.post("/schedule-drafts/{draft_id}/feedback", status_code=201)
     def record_feedback(
         draft_id: str,
@@ -778,6 +865,7 @@ def build_schedule_router(
             fixtures.append(
                 {
                     "id": str(match.id),
+                    "slot_id": str(placement.slot_id),
                     "code": code,
                     "stage": match.stage,
                     "home": participant_label(match.participant_a),
@@ -841,6 +929,43 @@ def build_schedule_router(
                 code="official_schedule_required",
                 title="Official schedule required",
                 detail="Recovery must start from the latest approved schedule.",
+            )
+        tournament = workspace.tournament
+        if tournament is None:
+            raise APIProblem(
+                status=409,
+                code="tournament_not_ready",
+                title="Tournament is not ready",
+                detail="The active tournament configuration is unavailable.",
+            )
+        tournament_slot_ids = {str(slot.id) for slot in tournament.slots}
+        supplied_slot_ids = set(body.unavailable_slot_ids)
+        if not supplied_slot_ids.issubset(tournament_slot_ids):
+            raise APIProblem(
+                status=422,
+                code="invalid_disruption_slots",
+                title="Invalid disruption slots",
+                detail=(
+                    "One or more selected venue-time slots do not belong to this "
+                    "workspace tournament."
+                ),
+            )
+        latest = workspace.official_versions[-1]
+        baseline = workspace.drafts.get(str(latest["approved_draft_id"]))
+        occupied_slot_ids = (
+            {str(placement.slot_id) for placement in baseline.placements}
+            if baseline is not None
+            else set()
+        )
+        if supplied_slot_ids.isdisjoint(occupied_slot_ids):
+            raise APIProblem(
+                status=422,
+                code="disruption_does_not_affect_official_schedule",
+                title="No official fixture is affected",
+                detail=(
+                    "Select at least one venue-time slot used by the latest official "
+                    "schedule."
+                ),
             )
         disruption_id = str(uuid4())
         disruption = {
@@ -932,6 +1057,69 @@ def build_schedule_router(
             )
             for match in matches
         }
+
+        def reject_infeasible(
+            evidence: tuple[dict[str, object], ...],
+            remedies: tuple[dict[str, object], ...],
+        ) -> None:
+            if operations is not None:
+                append_audit_event(
+                    operations,
+                    workspace.workspace_id,
+                    event_type="repair_infeasible",
+                    summary=(
+                        "No valid repair satisfied the confirmed constraints; the "
+                        "official schedule was preserved."
+                    ),
+                    structured_payload={
+                        "disruption_id": disruption_id,
+                        "official_schedule_preserved": True,
+                        "evidence_codes": [item["code"] for item in evidence],
+                        "remedy_codes": [item["code"] for item in remedies],
+                    },
+                    actor_type="system",
+                )
+            raise APIProblem(
+                status=422,
+                code="repair_infeasible",
+                title="No valid repair exists",
+                detail=(
+                    "The selected disruption leaves no placement that satisfies capacity, "
+                    "chronology, rest, and blackout rules. The official schedule is unchanged."
+                ),
+                evidence=evidence,
+                remedies=remedies,
+            )
+
+        precheck = run_pre_solver_checks(
+            repaired_tournament,
+            matches,
+            eligible,
+            minimum_rest_minutes=minimum_rest_minutes(workspace),
+        )
+        if not precheck.can_solve:
+            evidence = tuple(item.model_dump(mode="json") for item in precheck.evidence)
+            remedies_by_code = {
+                item.code.value: item.model_dump(mode="json") for item in precheck.remedies
+            }
+            remedies_by_code.setdefault(
+                RemedyCode.ADD_VENUE_SLOTS.value,
+                {
+                    "code": RemedyCode.ADD_VENUE_SLOTS.value,
+                    "description": "Add an eligible start time at either venue.",
+                },
+            )
+            remedies_by_code.setdefault(
+                RemedyCode.EXTEND_TOURNAMENT_WINDOW.value,
+                {
+                    "code": RemedyCode.EXTEND_TOURNAMENT_WINDOW.value,
+                    "description": (
+                        "Extend the tournament window and add venue slots before "
+                        "reconfirming constraints."
+                    ),
+                },
+            )
+            reject_infeasible(evidence, tuple(remedies_by_code.values()))
         solver_started = perf_counter()
         try:
             result = repair_schedule(
@@ -971,11 +1159,29 @@ def build_schedule_router(
             },
         )
         if result.status is RepairStatus.INFEASIBLE or result.validation_report is None:
-            raise APIProblem(
-                status=422,
-                code="repair_infeasible",
-                title="No valid repair exists",
-                detail="The official schedule is preserved; edit and reconfirm constraints.",
+            reject_infeasible(
+                (
+                    {
+                        "code": "chronology_or_rest_conflict",
+                        "message": (
+                            "Remaining slots cannot preserve every confirmed chronology "
+                            "and rest path."
+                        ),
+                    },
+                ),
+                (
+                    {
+                        "code": RemedyCode.ADD_VENUE_SLOTS.value,
+                        "description": "Add an eligible start time at either venue.",
+                    },
+                    {
+                        "code": RemedyCode.EXTEND_TOURNAMENT_WINDOW.value,
+                        "description": (
+                            "Extend the tournament window and add venue slots before "
+                            "reconfirming constraints."
+                        ),
+                    },
+                ),
             )
         draft_id = str(_uuid7())
         repaired = baseline.model_copy(
@@ -1036,6 +1242,108 @@ def build_schedule_router(
                 detail="A validated repair diff is not available for this draft.",
                 retryable=True,
             )
-        return diff
+        tournament = workspace.tournament
+        draft = workspace.drafts.get(draft_id)
+        if tournament is None or draft is None or not workspace.official_versions:
+            raise APIProblem(
+                status=409,
+                code="schedule_diff_not_ready",
+                title="Schedule diff is not ready",
+                detail="The repair comparison cannot be verified from workspace state.",
+                retryable=True,
+            )
+        baseline_version_id = str(diff["baseline_version_id"])
+        baseline_version = next(
+            (
+                version
+                for version in workspace.official_versions
+                if str(version["version_id"]) == baseline_version_id
+            ),
+            None,
+        )
+        if baseline_version is None:
+            raise APIProblem(
+                status=409,
+                code="schedule_diff_not_ready",
+                title="Schedule diff is not ready",
+                detail="The immutable official baseline is unavailable.",
+                retryable=True,
+            )
+        baseline = workspace.drafts.get(str(baseline_version["approved_draft_id"]))
+        if baseline is None:
+            raise APIProblem(
+                status=409,
+                code="schedule_diff_not_ready",
+                title="Schedule diff is not ready",
+                detail="The immutable official baseline placements are unavailable.",
+                retryable=True,
+            )
+        baseline_by_match = {str(item.match_id): item for item in baseline.placements}
+        draft_by_match = {str(item.match_id): item for item in draft.placements}
+        venue_by_id = {venue.id: venue for venue in tournament.venues}
+        team_names = {str(team.id): team.display_name for team in tournament.teams}
+        matches = generate_match_graph(tournament)
+
+        def participant_label(value: str) -> str:
+            return {
+                "A1": "Group A Winner",
+                "A2": "Group A Runner-up",
+                "B1": "Group B Winner",
+                "B2": "Group B Runner-up",
+                "SF1 Winner": "Semifinal 1 Winner",
+                "SF2 Winner": "Semifinal 2 Winner",
+            }.get(value, team_names.get(value, value))
+
+        def placement_view(placement) -> dict[str, object] | None:
+            if placement is None:
+                return None
+            venue = venue_by_id[placement.venue_id]
+            zone = ZoneInfo(venue.iana_time_zone)
+            return {
+                "slot_id": str(placement.slot_id),
+                "venue": venue.display_name,
+                "starts_at": placement.starts_at_utc.astimezone(zone).isoformat(),
+                "ends_at": placement.ends_at_utc.astimezone(zone).isoformat(),
+                "timezone": venue.iana_time_zone,
+            }
+
+        changed = {
+            change: {str(item) for item in diff.get(change, ())}
+            for change in ("unchanged", "moved", "added", "removed")
+        }
+        fixture_views = []
+        for match in matches:
+            match_id = str(match.id)
+            change = next(
+                (name for name, identifiers in changed.items() if match_id in identifiers),
+                "unchanged",
+            )
+            code = (
+                f"G{match.sequence:02d}"
+                if match.stage is MatchStage.GROUP
+                else "SF1"
+                if match.sequence == 13
+                else "SF2"
+                if match.sequence == 14
+                else "F1"
+            )
+            fixture_views.append(
+                {
+                    "id": match_id,
+                    "code": code,
+                    "fixture": (
+                        f"{participant_label(match.participant_a)} vs "
+                        f"{participant_label(match.participant_b)}"
+                    ),
+                    "change": change,
+                    "before": placement_view(baseline_by_match.get(match_id)),
+                    "after": placement_view(draft_by_match.get(match_id)),
+                }
+            )
+        return {
+            **diff,
+            "validation_valid": draft.validation_report.valid,
+            "fixture_views": fixture_views,
+        }
 
     return router

@@ -23,6 +23,28 @@ export type WeatherStatus = {
   guidance?: string;
 };
 
+export type ScheduleWeatherResponse = {
+  draft_id: string;
+  mode: "live" | "deterministic";
+  provider: string | null;
+  issued_at: string | null;
+  fetched_at: string | null;
+  quality: string;
+  coverage: number;
+  allocation_minutes: number;
+  attribution: string | null;
+  fixtures: Array<{
+    id: string;
+    label: string;
+    venue: string;
+    starts_at: string;
+    timezone: string;
+    risk: number | null;
+    components: Record<string, number | null>;
+    quality: string;
+  }>;
+};
+
 export type ConfirmSetupInput = {
   confirmation: true;
   expected_revision: number;
@@ -74,6 +96,7 @@ export type OfficialScheduleVersion = {
 
 export type OfficialFixtureResponse = {
   id: string;
+  slot_id: string;
   code: string;
   stage: "group" | "semifinal" | "final";
   home: string;
@@ -83,6 +106,33 @@ export type OfficialFixtureResponse = {
   ends_at: string;
   timezone: string;
   validation: "valid";
+};
+
+export type ScheduleDiffPlacement = {
+  slot_id: string;
+  venue: string;
+  starts_at: string;
+  ends_at: string;
+  timezone: string;
+};
+
+export type ScheduleDiffResponse = {
+  baseline_version_id: string;
+  draft_id: string;
+  unchanged: string[];
+  moved: string[];
+  added: string[];
+  removed: string[];
+  metric_deltas: Record<string, number>;
+  validation_valid: boolean;
+  fixture_views: Array<{
+    id: string;
+    code: string;
+    fixture: string;
+    change: "unchanged" | "moved" | "added" | "removed";
+    before: ScheduleDiffPlacement | null;
+    after: ScheduleDiffPlacement | null;
+  }>;
 };
 
 export type OfficialScheduleResponse = OfficialScheduleVersion & {
@@ -97,6 +147,40 @@ export type AuditEventResponse = {
   summary: string;
   structured_payload?: Record<string, unknown>;
   occurred_at: string;
+};
+
+export type SystemModeResponse = {
+  mode: "gpt-5.6" | "fallback-model" | "deterministic";
+  label: string;
+  provider: string | null;
+  model: string | null;
+  conversational_available: boolean;
+  deterministic_services_available: boolean;
+  fabricated_agent_response: false;
+  emergency_cached_results: boolean;
+};
+
+export type DirectorTurnResponse = {
+  message: string | null;
+  mode: SystemModeResponse["mode"];
+  provider: string | null;
+  model: string | null;
+  proposed_state_changes: Array<{
+    field: string;
+    proposed_value: string | number | boolean;
+    requires_confirmation: boolean;
+  }>;
+  specialist_requests: Array<Record<string, unknown>>;
+  evidence_refs: Array<Record<string, unknown>>;
+  ui_actions: Array<{
+    action: string;
+    target_id: string | null;
+    label: string;
+  }>;
+  attempt_count: number;
+  transitions: string[];
+  unavailable_reason: string | null;
+  fabricated_agent_response: false;
 };
 
 export type FeedbackReason =
@@ -301,8 +385,28 @@ export class CrickOpsApiClient {
     return response.official;
   }
 
+  async getScheduleDiff(draftId: string): Promise<ScheduleDiffResponse> {
+    return this.get<ScheduleDiffResponse>(
+      `/api/v1/schedule-diffs/${encodeURIComponent(draftId)}`,
+    );
+  }
+
+  async getScheduleWeather(draftId: string): Promise<ScheduleWeatherResponse> {
+    return this.get<ScheduleWeatherResponse>(
+      `/api/v1/weather/schedule?draft_id=${encodeURIComponent(draftId)}`,
+    );
+  }
+
   async getAuditEvents(): Promise<{ items: AuditEventResponse[]; next_cursor: string | null; has_more: boolean }> {
     return this.get("/api/v1/audit-events");
+  }
+
+  async getSystemMode(): Promise<SystemModeResponse> {
+    return this.get<SystemModeResponse>("/api/v1/system/mode");
+  }
+
+  async sendDirectorTurn(message: string): Promise<DirectorTurnResponse> {
+    return this.request<DirectorTurnResponse>("/api/v1/director/turn", { message });
   }
 
   async recordScheduleFeedback(

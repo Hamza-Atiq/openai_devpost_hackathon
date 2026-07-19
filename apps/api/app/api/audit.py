@@ -21,6 +21,7 @@ def append_audit_event(
     summary: str,
     structured_payload: Mapping[str, Any] | None = None,
     actor_type: str = "organizer",
+    agent_provenance: Mapping[str, Any] | None = None,
 ) -> None:
     event = {
         "id": str(uuid4()),
@@ -29,7 +30,7 @@ def append_audit_event(
         "summary": summary,
         "structured_payload": dict(structured_payload or {}),
         "occurred_at": datetime.now(UTC).isoformat(),
-        "agent_provenance": None,
+        "agent_provenance": dict(agent_provenance) if agent_provenance is not None else None,
         "correlation_id": current_correlation_id(),
     }
     state.audit_events.setdefault(workspace_id, []).append(event)

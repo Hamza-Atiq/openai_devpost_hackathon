@@ -9,19 +9,13 @@ export type FixtureWeatherView = {
 };
 
 type WeatherRiskPanelProps = {
-  coverage?: number;
-  issuedAt?: string;
-  stale?: boolean;
-  provider?: string;
-  fixtures?: FixtureWeatherView[];
-  allocationMinutes?: number;
+  coverage: number;
+  issuedAt: string;
+  stale: boolean;
+  provider: string;
+  fixtures: FixtureWeatherView[];
+  allocationMinutes: number;
 };
-
-const defaultFixtures: FixtureWeatherView[] = [
-  { id: "G01", label: "Falcons vs Lions", venue: "National Cricket Ground", startsAt: "2026-09-07T10:00:00+05:00", risk: 18 },
-  { id: "G04", label: "Mariners vs Royals", venue: "Riverside Oval", startsAt: "2026-09-08T18:00:00+05:00", risk: 46 },
-  { id: "G07", label: "Strikers vs United", venue: "National Cricket Ground", startsAt: "2026-09-10T18:00:00+05:00", risk: 78 },
-];
 
 function riskPresentation(risk: number | null) {
   if (risk === null) return { label: "Unknown", symbol: "?", level: "unknown" };
@@ -34,7 +28,7 @@ export function weatherAttribution(provider: string, issuedAt: string) {
   return `Weather data by ${provider}. Forecast issued ${issuedAt}. CrickOps provides planning guidance only.`;
 }
 
-export function WeatherRiskPanel({ coverage = 100, issuedAt = "31 Aug 2026, 14:00 PKT", stale = false, provider = "Open-Meteo", fixtures = defaultFixtures, allocationMinutes = 240 }: WeatherRiskPanelProps) {
+export function WeatherRiskPanel({ coverage, issuedAt, stale, provider, fixtures, allocationMinutes }: WeatherRiskPanelProps) {
   const coverageLabel = coverage === 0 ? "No forecast coverage" : coverage < 100 ? "Partial forecast coverage" : `${coverage.toFixed(1)}% forecast coverage`;
   return (
     <section className="weather-intelligence" aria-labelledby="weather-title">
@@ -45,10 +39,10 @@ export function WeatherRiskPanel({ coverage = 100, issuedAt = "31 Aug 2026, 14:0
       {stale && <div className="weather-warning" role="status"><strong>Forecast is stale</strong><span>Refresh before using these scores for a scheduling decision.</span></div>}
       {coverage < 100 && <div className="weather-warning" role="status"><strong>{coverageLabel}</strong><span>Uncovered fixtures remain Unknown and receive the configured missing-coverage penalty.</span></div>}
       <div className="risk-ledger" role="list" aria-label="Fixture weather risks">
-        {fixtures.map((fixture) => {
+        {fixtures.length ? fixtures.map((fixture) => {
           const presentation = riskPresentation(fixture.risk);
           return <article className={`risk-row risk-${presentation.level}`} role="listitem" key={fixture.id}><span className="risk-symbol" aria-hidden="true">{presentation.symbol}</span><div><strong>{fixture.id} · {fixture.label}</strong><span>{fixture.venue} · <time dateTime={fixture.startsAt}>{new Date(fixture.startsAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</time></span></div><div className="risk-reading"><strong>{fixture.risk === null ? "—" : fixture.risk.toFixed(1)}</strong><span>{presentation.label}</span></div></article>;
-        })}
+        }) : <div className="operation-status">No scheduled fixture weather is available.</div>}
       </div>
       <footer className="weather-attribution"><span>Issued {issuedAt}</span><span>{weatherAttribution(provider, issuedAt)}</span></footer>
       <p className="weather-disclaimer">Risk scores are planning guidance. CrickOps does not make official safety, medical, venue, or regulatory decisions and cannot guarantee prevention of washouts.</p>

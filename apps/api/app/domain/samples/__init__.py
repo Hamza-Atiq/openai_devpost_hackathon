@@ -29,27 +29,32 @@ class SampleSeed(DomainModel):
     sample_id: str = Field(pattern=r"^[a-z0-9-]+$")
     name: str = Field(min_length=1, max_length=160)
     match_format_preset: Literal["T20"]
-    start_date: date
-    end_date: date
+    start_offset_days: int = Field(ge=1, le=5)
+    window_days: int = Field(ge=7, le=16)
     iana_time_zone: str
     team_names: tuple[str, str, str, str, str, str, str, str]
     venues: tuple[SampleVenue, SampleVenue]
-    available_dates: tuple[date, ...] = Field(min_length=8, max_length=21)
-    local_start_time: time
+    available_day_offsets: tuple[int, ...] = Field(min_length=8, max_length=21)
+    local_start_times: tuple[time, ...] = Field(min_length=2, max_length=4)
+    dual_start_day_count: int = Field(ge=1, le=7)
 
 
 def available_samples() -> tuple[str, ...]:
     return tuple(path.stem for path in sorted(_SAMPLE_DIRECTORY.glob("*.json")))
 
 
-def load_sample(sample_id: str) -> TournamentConfig:
+def load_sample(sample_id: str, *, reference_date: date | None = None) -> TournamentConfig:
     path = _SAMPLE_DIRECTORY / f"{sample_id}.json"
     if path.parent != _SAMPLE_DIRECTORY or not path.is_file():
         raise ValueError("unknown sample tournament")
     seed = SampleSeed.model_validate_json(path.read_text(encoding="utf-8"))
     if seed.sample_id != sample_id:
         raise ValueError("sample_id must match its filename")
-    return _expand_seed(seed, sample_index=available_samples().index(sample_id) + 1)
+    return _expand_seed(
+        seed,
+        sample_index=available_samples().index(sample_id) + 1,
+        reference_date=reference_date or date.today(),
+    )
 
 
 def _uuid7(sample_index: int, entity_number: int) -> UUID:
@@ -57,7 +62,12 @@ def _uuid7(sample_index: int, entity_number: int) -> UUID:
     return UUID(f"01890f3e-0001-7000-8000-{combined:012x}")
 
 
-def _expand_seed(seed: SampleSeed, *, sample_index: int) -> TournamentConfig:
+def _expand_seed(
+    seed: SampleSeed,
+    *,
+    sample_index: int,
+    reference_date: date,
+) -> TournamentConfig:
     group_ids = (_uuid7(sample_index, 1), _uuid7(sample_index, 2))
     teams = tuple(
         Team(
@@ -88,30 +98,42 @@ def _expand_seed(seed: SampleSeed, *, sample_index: int) -> TournamentConfig:
         for index, source in enumerate(seed.venues)
     )
     zone = ZoneInfo(seed.iana_time_zone)
+    start_date = reference_date + timedelta(days=seed.start_offset_days)
+    end_date = start_date + timedelta(days=seed.window_days - 1)
     slots: list[VenueSlot] = []
-    for day_index, available_date in enumerate(seed.available_dates):
-        local_start = datetime.combine(available_date, seed.local_start_time, tzinfo=zone)
-        starts_at_utc = local_start.astimezone(UTC)
-        for venue_index, venue in enumerate(venues):
-            slots.append(
-                VenueSlot(
-                    id=_uuid7(sample_index, 100 + day_index * 2 + venue_index),
-                    venue_id=venue.id,
-                    starts_at_utc=starts_at_utc,
-                    ends_at_utc=starts_at_utc + timedelta(minutes=240),
-                    local_date=available_date,
-                    availability="available",
-                    source="organizer",
+    for day_offset in seed.available_day_offsets:
+        if day_offset >= seed.window_days:
+            raise ValueError("sample available day offset must fall inside its window")
+        available_date = start_date + timedelta(days=day_offset)
+        local_times = (
+            seed.local_start_times
+            if day_offset < seed.dual_start_day_count
+            else seed.local_start_times[:1]
+        )
+        for time_index, local_start_time in enumerate(local_times):
+            local_start = datetime.combine(available_date, local_start_time, tzinfo=zone)
+            starts_at_utc = local_start.astimezone(UTC)
+            for venue_index, venue in enumerate(venues):
+                entity_number = 100 + day_offset * 4 + time_index * 2 + venue_index
+                slots.append(
+                    VenueSlot(
+                        id=_uuid7(sample_index, entity_number),
+                        venue_id=venue.id,
+                        starts_at_utc=starts_at_utc,
+                        ends_at_utc=starts_at_utc + timedelta(minutes=240),
+                        local_date=available_date,
+                        availability="available",
+                        source="organizer",
+                    )
                 )
-            )
 
     return TournamentConfig(
         id=_uuid7(sample_index, 50),
         name=seed.name,
         match_format_preset=seed.match_format_preset,
         allocation_minutes=240,
-        start_date=seed.start_date,
-        end_date=seed.end_date,
+        start_date=start_date,
+        end_date=end_date,
         status="draft_setup",
         time_zone_policy="shared",
         teams=teams,

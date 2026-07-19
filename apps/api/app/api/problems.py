@@ -16,6 +16,8 @@ class ProblemDetails(DomainModel):
     code: str = Field(pattern=r"^[a-z0-9_]+$")
     detail: str = Field(min_length=1)
     field_errors: tuple[dict[str, object], ...] | None = None
+    evidence: tuple[dict[str, object], ...] | None = None
+    remedies: tuple[dict[str, object], ...] | None = None
     correlation_id: str = Field(min_length=1)
     retryable: bool
 
@@ -29,6 +31,8 @@ class APIProblem(Exception):
         title: str,
         detail: str,
         retryable: bool = False,
+        evidence: tuple[dict[str, object], ...] | None = None,
+        remedies: tuple[dict[str, object], ...] | None = None,
     ) -> None:
         self.problem = ProblemDetails(
             type=f"https://crickops.dev/problems/{code}",
@@ -36,6 +40,8 @@ class APIProblem(Exception):
             status=status,
             code=code,
             detail=detail,
+            evidence=evidence,
+            remedies=remedies,
             correlation_id=current_correlation_id(),
             retryable=retryable,
         )

@@ -59,6 +59,7 @@ def test_official_schedule_returns_backend_owned_validated_fixture_views() -> No
         "F1",
     ]
     assert all(fixture["validation"] == "valid" for fixture in official["fixtures"])
+    assert all(fixture["slot_id"] for fixture in official["fixtures"])
     assert all("timezone" in fixture for fixture in official["fixtures"])
     assert all("+" in fixture["starts_at"] for fixture in official["fixtures"])
     assert official["fixtures"][12]["home"] == "Group A Winner"

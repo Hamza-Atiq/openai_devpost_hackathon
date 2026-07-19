@@ -261,4 +261,63 @@ describe("CrickOpsApiClient", () => {
       }),
     );
   });
+
+  it("reads the active agent mode and submits a Director turn", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            mode: "gpt-5.6",
+            label: "GPT-5.6 mode",
+            provider: "openai",
+            model: "gpt-5.6",
+            conversational_available: true,
+            deterministic_services_available: true,
+            fabricated_agent_response: false,
+            emergency_cached_results: false,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: "Review this preferred evening-slot interpretation.",
+            mode: "gpt-5.6",
+            provider: "openai",
+            model: "gpt-5.6",
+            proposed_state_changes: [],
+            specialist_requests: [],
+            evidence_refs: [],
+            ui_actions: [],
+            attempt_count: 1,
+            transitions: ["primary_active"],
+            unavailable_reason: null,
+            fabricated_agent_response: false,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    const client = new CrickOpsApiClient(fetcher);
+
+    const mode = await client.getSystemMode();
+    const turn = await client.sendDirectorTurn("Prefer evening matches.");
+
+    expect(mode.conversational_available).toBe(true);
+    expect(turn.message).toContain("evening-slot");
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/system/mode",
+      expect.objectContaining({ method: "GET", cache: "no-store" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/director/turn",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ message: "Prefer evening matches." }),
+      }),
+    );
+  });
 });

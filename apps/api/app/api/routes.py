@@ -23,6 +23,7 @@ from app.security.csrf import (
     validate_bootstrap_origin,
     validate_workspace_mutation,
 )
+from app.weather.service import WeatherServiceProtocol
 
 if TYPE_CHECKING:
     from app.api.operations import OperationsState
@@ -114,6 +115,7 @@ def build_v1_router(
     store: GuestWorkspaceStore,
     operations: OperationsState | None = None,
     demo_protection: PublicDemoProtection | None = None,
+    weather_service: WeatherServiceProtocol | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
@@ -476,13 +478,24 @@ def build_v1_router(
                     detail=f"Weather refresh is temporarily limited; retry after {reset}.",
                     retryable=True,
                 )
-        workspace.weather = {
-            "mode": body.mode,
-            "quality": "unavailable" if body.mode == "live" else "deterministic",
-            "demo_mode_available": True,
-            "scenario_id": None,
-            "guidance": "Weather risk is planning guidance only.",
-        }
+        if workspace.tournament is None:
+            raise APIProblem(
+                status=409,
+                code="tournament_not_ready",
+                title="Tournament is not ready",
+                detail="Load or create a tournament before refreshing weather.",
+            )
+        workspace.weather = (
+            weather_service.refresh(workspace.tournament, mode=body.mode)
+            if weather_service is not None
+            else {
+                "mode": body.mode,
+                "quality": "unavailable" if body.mode == "live" else "deterministic",
+                "demo_mode_available": True,
+                "scenario_id": None,
+                "guidance": "Weather risk is planning guidance only.",
+            }
+        )
         return workspace.weather
 
     @router.get("/weather")
@@ -504,13 +517,28 @@ def build_v1_router(
                 title="Invalid demo scenario",
                 detail="Select the supported scenario and confirm activation.",
             )
-        workspace.weather = {
-            "mode": "deterministic",
-            "quality": "complete",
-            "demo_mode_available": True,
-            "scenario_id": scenario_id,
-            "guidance": "Weather risk is planning guidance only.",
-        }
+        if workspace.tournament is None:
+            raise APIProblem(
+                status=409,
+                code="tournament_not_ready",
+                title="Tournament is not ready",
+                detail="Load or create a tournament before activating demo weather.",
+            )
+        workspace.weather = (
+            weather_service.refresh(
+                workspace.tournament,
+                mode="deterministic",
+                scenario_id=scenario_id,
+            )
+            if weather_service is not None
+            else {
+                "mode": "deterministic",
+                "quality": "complete",
+                "demo_mode_available": True,
+                "scenario_id": scenario_id,
+                "guidance": "Weather risk is planning guidance only.",
+            }
+        )
         return workspace.weather
 
     @router.post("/weather/thresholds")

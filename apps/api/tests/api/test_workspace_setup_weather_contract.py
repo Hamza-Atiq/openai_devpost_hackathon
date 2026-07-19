@@ -167,6 +167,55 @@ def test_deterministic_weather_activation_survives_live_unavailability() -> None
     assert weather.json()["scenario_id"] == "rain-threshold-v1"
 
 
+class StubWeatherService:
+    def __init__(self) -> None:
+        self.modes: list[str] = []
+
+    def refresh(self, tournament, *, mode: str, scenario_id: str | None = None):
+        self.modes.append(mode)
+        risks = {str(slot.id): float(index) for index, slot in enumerate(tournament.slots)}
+        return {
+            "mode": mode,
+            "quality": "complete",
+            "demo_mode_available": True,
+            "scenario_id": scenario_id,
+            "provider": "open-meteo" if mode == "live" else "deterministic-demo",
+            "fetched_at": "2026-07-19T12:00:00Z",
+            "issued_at": "2026-07-19T11:45:00Z",
+            "coverage": 100.0,
+            "slot_risks": risks,
+            "slot_details": {
+                slot_id: {
+                    "risk": risk,
+                    "covered": True,
+                    "quality": "complete",
+                    "components": {"rain": risk},
+                }
+                for slot_id, risk in risks.items()
+            },
+            "attribution": "Weather data by Open-Meteo.com",
+            "guidance": "Weather risk is planning guidance only.",
+        }
+
+
+def test_live_weather_service_persists_slot_level_risk_and_provenance() -> None:
+    service = StubWeatherService()
+    client = api_client(create_app(weather_service=service))
+    client.post("/api/v1/workspaces", json={"sample_id": "global-community-cup"})
+
+    response = client.post("/api/v1/weather/refresh", json={"mode": "live"})
+    restored = client.get("/api/v1/weather")
+
+    assert response.status_code == 200
+    assert response.json()["quality"] == "complete"
+    assert response.json()["coverage"] == 100.0
+    assert len(response.json()["slot_risks"]) == 28
+    assert response.json()["provider"] == "open-meteo"
+    assert response.json()["attribution"] == "Weather data by Open-Meteo.com"
+    assert restored.json() == response.json()
+    assert service.modes == ["live"]
+
+
 def test_weather_threshold_stays_proposed_until_explicit_confirmation() -> None:
     client = TestClient(create_app(), base_url="https://testserver")
     created = client.post(

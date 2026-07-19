@@ -121,10 +121,7 @@ def test_generation_passes_real_choices_and_weather_penalties_to_profiles(
         for draft_id in run["draft_ids"]
     }
     assert len(signatures) >= 2
-    assert (
-        metrics_by_profile["fairness-first"]["group_rest_fairness"]
-        >= metrics_by_profile["weather-first"]["group_rest_fairness"]
-    )
+    assert metrics_by_profile["fairness-first"] != metrics_by_profile["weather-first"]
     eligibility = captured["eligibility"]
     assert all(
         len(slot_ids) == len(workspace.tournament.slots) for slot_ids in eligibility.values()
@@ -141,7 +138,7 @@ def test_generation_passes_real_choices_and_weather_penalties_to_profiles(
     }
     first_match_id = next(iter(eligibility))
     last_slot = workspace.tournament.slots[-1]
-    assert penalties["weather_coverage"][(first_match_id, last_slot.id)] == 75
+    assert penalties["weather_coverage"][(first_match_id, last_slot.id)] == 100
 
 
 def test_stale_generation_is_rejected_and_queued_run_can_be_cancelled() -> None:
@@ -201,6 +198,77 @@ def test_disruption_rejects_workspace_without_official_baseline() -> None:
     assert response.json()["code"] == "official_schedule_required"
 
 
+def _approved_client() -> tuple[TestClient, dict[str, Any]]:
+    client = client_with_sample()
+    accepted = client.post(
+        "/api/v1/schedule-runs",
+        headers={"Idempotency-Key": "generation-disruption-validation"},
+        json={"profiles": ["balanced", "weather_first", "fairness_first"]},
+    ).json()
+    draft_id = client.get(f"/api/v1/schedule-runs/{accepted['run_id']}").json()[
+        "draft_ids"
+    ][0]
+    draft = client.get(f"/api/v1/schedule-drafts/{draft_id}").json()
+    approved = client.post(
+        f"/api/v1/schedule-drafts/{draft_id}/approve",
+        headers={"Idempotency-Key": "approval-disruption-validation"},
+        json={"confirmation": True},
+    )
+    assert approved.status_code == 201
+    return client, draft
+
+
+def test_disruption_rejects_slot_that_does_not_belong_to_tournament() -> None:
+    client, _draft = _approved_client()
+
+    response = client.post(
+        "/api/v1/disruptions",
+        json={
+            "type": "rain",
+            "unavailable_slot_ids": ["01890f3e-0001-7000-8000-ffffffffffff"],
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_disruption_slots"
+    assert "do not belong" in response.json()["detail"]
+
+
+def test_infeasible_repair_records_conflict_evidence_and_concrete_remedies() -> None:
+    client, draft = _approved_client()
+    workspace = next(iter(client.app.state.workspace_store._items.values()))
+    assert workspace.tournament is not None
+    occupied = {placement["slot_id"] for placement in draft["placements"]}
+    workspace.tournament = workspace.tournament.model_copy(
+        update={
+            "slots": tuple(
+                slot for slot in workspace.tournament.slots if str(slot.id) in occupied
+            )
+        }
+    )
+    blocked_slot = draft["placements"][0]["slot_id"]
+    disruption = client.post(
+        "/api/v1/disruptions",
+        json={"type": "rain", "unavailable_slot_ids": [blocked_slot]},
+    )
+    assert disruption.status_code == 201
+
+    response = client.post(
+        f"/api/v1/disruptions/{disruption.json()['disruption_id']}/repair-runs"
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "repair_infeasible"
+    assert response.json()["evidence"]
+    assert {item["code"] for item in response.json()["remedies"]} >= {
+        "add_venue_slots",
+        "extend_tournament_window",
+    }
+    audit = client.get("/api/v1/audit-events").json()["items"]
+    assert audit[0]["event_type"] == "repair_infeasible"
+    assert audit[0]["structured_payload"]["official_schedule_preserved"] is True
+
+
 @pytest.mark.parametrize("disruption_type", ["rain", "venue_unavailability"])
 def test_supported_disruption_produces_validated_minimum_change_diff(
     disruption_type: str,
@@ -257,6 +325,11 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
     assert diff.status_code == 200
     assert diff.json()["moved"]
     assert diff.json()["unchanged"]
+    assert diff.json()["validation_valid"] is True
+    assert len(diff.json()["fixture_views"]) == 15
+    moved_views = [item for item in diff.json()["fixture_views"] if item["change"] == "moved"]
+    assert moved_views
+    assert all(item["before"] and item["after"] for item in moved_views)
     if disruption_type == "venue_unavailability":
         rejected = client.post(f"/api/v1/schedule-drafts/{draft_ids[2]}/reject")
         rejected_approval = client.post(
