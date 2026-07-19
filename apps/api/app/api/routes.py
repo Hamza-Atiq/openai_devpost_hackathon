@@ -121,13 +121,26 @@ def build_v1_router(
     router = APIRouter(prefix="/api/v1")
 
     def sample_weather(workspace: GuestWorkspace) -> dict[str, object]:
-        if workspace.tournament is None or weather_service is None:
+        if workspace.tournament is None:
             return {
                 "mode": "live",
                 "quality": "not_requested",
                 "demo_mode_available": True,
                 "scenario_id": None,
             }
+        if weather_service is None:
+            return bind_weather_state(
+                {
+                    "mode": "live",
+                    "quality": "not_requested",
+                    "demo_mode_available": True,
+                    "scenario_id": None,
+                    "coverage": 0.0,
+                    "slot_risks": {},
+                    "slot_details": {},
+                },
+                workspace.tournament,
+            )
         try:
             return bind_weather_state(
                 weather_service.refresh(
