@@ -14,6 +14,7 @@
 }
 
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: var(--mist); }
 button, a { font: inherit; }
 button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
@@ -238,11 +239,15 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .setup-intro h1 { margin: 0; font-size: clamp(2.8rem, 6vw, 5.4rem); text-transform: uppercase; }
 .setup-intro > p:last-of-type { color: var(--muted); max-width: 680px; line-height: 1.6; }
 .setup-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 3rem 0; padding: 0; list-style: none; background: var(--line); border: 1px solid var(--line); }
-.setup-steps li { display: grid; gap: 1rem; min-height: 130px; padding: 1rem; background: var(--paper); }
-.setup-steps li[aria-current] { box-shadow: inset 0 -5px var(--crease); }
+.setup-steps li { background: var(--paper); }
+.setup-steps a { display: grid; gap: 1rem; min-height: 130px; padding: 1rem; color: var(--pitch-ink); text-decoration: none; transition: background-color 160ms ease, box-shadow 160ms ease; }
+.setup-steps a:hover { background: color-mix(in srgb, var(--crease) 12%, var(--paper)); }
+.setup-steps a[aria-current="location"] { box-shadow: inset 0 -5px var(--crease); }
+.setup-steps a:focus-visible { position: relative; z-index: 1; outline-offset: -4px; }
 .setup-steps b { font-family: ui-monospace, monospace; color: var(--boundary); }
 .guided-setup { display: grid; gap: 1.25rem; max-width: 1080px; }
 .setup-block, .ledger { padding: clamp(1.2rem, 3vw, 2.2rem); border: 1px solid var(--line); background: var(--paper); }
+.setup-block[id], .ledger[id] { scroll-margin-top: 2rem; }
 .block-heading { display: grid; grid-template-columns: 160px 1fr; gap: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
 .block-heading > span { color: var(--boundary); font: 700 .72rem ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
 .block-heading h2, .ledger h2 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.6rem); }

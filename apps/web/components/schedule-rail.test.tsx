@@ -19,7 +19,7 @@ describe("Schedule Rail", () => {
     expect(markup).toContain("Asia/Karachi");
     expect(markup).toContain("Group stage complete");
     expect(markup).toContain("Semifinals complete");
-    expect(markup).toContain("Version 2 · official");
+    expect(markup).toContain("Version 2 · current official");
     expect(markup).not.toContain("Publish externally");
   });
 

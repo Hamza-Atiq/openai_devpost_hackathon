@@ -158,7 +158,7 @@ export function GuidedSetup({
         </div>
       )}
 
-      <section className="setup-block" aria-labelledby="format-heading">
+      <section className="setup-block" id="format-and-teams" aria-labelledby="format-heading">
         <div className="block-heading">
           <span>01 / Playing format</span>
           <div>
@@ -197,7 +197,7 @@ export function GuidedSetup({
         </p>
       </section>
 
-      <section className="setup-block" aria-labelledby="venue-heading">
+      <section className="setup-block" id="venues-and-location" aria-labelledby="venue-heading">
         <div className="block-heading">
           <span>02 / Ground coordinates</span>
           <div>
@@ -301,7 +301,7 @@ export function GuidedSetup({
         </label>
       </section>
 
-      <section className="setup-block" aria-labelledby="slot-heading">
+      <section className="setup-block" id="dates-and-slots" aria-labelledby="slot-heading">
         <div className="block-heading">
           <span>03 / Fixture strip</span>
           <div>
@@ -387,7 +387,7 @@ export function GuidedSetup({
         </div>
       </section>
 
-      <section className="ledger" aria-labelledby="ledger-heading">
+      <section className="ledger" id="constraints" aria-labelledby="ledger-heading">
         <div className="ledger-head">
           <div>
             <p className="eyebrow">Authoritative review</p>
