@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 
 import { CrickOpsApiClient } from "@/lib/api-client";
+import { formatVenueDateTime } from "@/lib/venue-time";
 
 import { ScheduleDiffRail } from "./schedule-diff-rail";
 
@@ -24,7 +25,7 @@ export function RepairReviewLive({ draftId }: { draftId: string }) {
   }, [draftId]);
   if (error) return <div className="operation-status operation-status-error" role="alert"><strong>Repair comparison unavailable</strong><p>{error}</p></div>;
   if (!diff) return <div className="operation-status" role="status">Loading the validated repair difference…</div>;
-  const placementDetail = (placement: typeof diff.fixture_views[number]["before"]) => placement ? `${new Date(placement.starts_at).toLocaleString()} · ${placement.venue} · ${placement.timezone}` : "No placement";
+  const placementDetail = (placement: typeof diff.fixture_views[number]["before"]) => placement ? `${formatVenueDateTime(placement.starts_at, placement.timezone)} · ${placement.venue} · ${placement.timezone}` : "No placement";
   const fixtures = (change: typeof diff.fixture_views[number]["change"]) => diff.fixture_views.filter((item) => item.change === change).map((item) => ({ id: item.code, fixture: item.fixture, detail: change === "moved" ? `${placementDetail(item.before)} → ${placementDetail(item.after)}` : placementDetail(item.after ?? item.before) }));
   return <ScheduleDiffRail validated={diff.validation_valid} unchanged={fixtures("unchanged")} moved={fixtures("moved")} added={fixtures("added")} removed={fixtures("removed")} metricDeltas={diff.metric_deltas} versions={versions} onApprove={async () => { await new CrickOpsApiClient().approveSchedule(draftId); await refreshVersions(); }} onReject={() => new CrickOpsApiClient().rejectSchedule(draftId)} onRestore={async (versionId) => { await new CrickOpsApiClient().restoreScheduleVersion(versionId); await refreshVersions(); }} />;
 }

@@ -151,7 +151,8 @@ def create_app(
             application.state.demo_protection,
         )
     )
-    application.include_router(build_session_probe_router(runtime_probe_config))
+    if runtime_probe_config.environment in {"local", "test"}:
+        application.include_router(build_session_probe_router(runtime_probe_config))
 
     @application.middleware("http")
     async def private_workspace_cache_control(request: Request, call_next):

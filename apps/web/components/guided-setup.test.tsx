@@ -11,6 +11,11 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("120-minute operational venue allocation");
     expect(markup).toContain("T20");
     expect(markup).toContain("240-minute operational venue allocation");
+    expect(markup).toContain("Edit teams and groups");
+    expect(markup).toContain("Group A");
+    expect(markup).toContain("Group B");
+    expect((markup.match(/Team display name/g) ?? [])).toHaveLength(8);
+    expect(markup).toContain("Swap group with");
     expect(markup).not.toContain("Match duration override");
     expect(markup).toContain("Venue display name");
     expect(markup).toContain("City, country, area, or postal code");
@@ -22,6 +27,7 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("Constraint Ledger");
     expect(markup).toContain("System invariant");
     expect(markup).toContain("No additional minimum rest configured");
+    expect(markup).toContain("Enter a whole number from 0 to 168 hours");
     expect(markup).toContain("Soft preference");
     expect((markup.match(/class="ledger-rule-status/g) ?? [])).toHaveLength(5);
     expect((markup.match(/class="ledger-rule-content/g) ?? [])).toHaveLength(5);

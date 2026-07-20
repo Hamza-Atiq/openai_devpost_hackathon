@@ -5,7 +5,9 @@ import { useMemo, useState } from "react";
 import { ApiProblemError, CrickOpsApiClient } from "@/lib/api-client";
 import {
   draftFromSetup,
+  defaultSetupTeams,
   type SetupSaveState,
+  type SetupTeamValue,
   type SetupVenueValue,
   type TournamentSetupSaveInput,
   type TournamentSetupView,
@@ -47,6 +49,7 @@ function fallbackDraft(revision: number): TournamentSetupSaveInput {
     start_date: "2026-09-07",
     end_date: "2026-09-20",
     venues: [venue("Harbour Oval"), venue("Riverside Cricket Ground")],
+    teams: defaultSetupTeams(),
     weekday_start_times: ["18:00"],
     weekend_start_times: ["10:00", "18:00"],
     blackout_dates: [],
@@ -75,6 +78,7 @@ export function GuidedSetup({
   );
   const [manualCoordinates, setManualCoordinates] = useState(Boolean(initialSetup));
   const [confirmed, setConfirmed] = useState(false);
+  const [restHoursText, setRestHoursText] = useState(() => String((initialSetup?.setup_draft.minimum_rest_minutes ?? 0) / 60));
   const [setupStatus, setSetupStatus] = useState<
     "pending" | "saving" | "ready" | "error"
   >("pending");
@@ -83,6 +87,8 @@ export function GuidedSetup({
     () => allocationMinutes(draft.match_format_preset),
     [draft.match_format_preset],
   );
+  const parsedRestHours = Number(restHoursText);
+  const restHoursValid = /^\d+$/.test(restHoursText) && Number.isInteger(parsedRestHours) && parsedRestHours >= 0 && parsedRestHours <= 168;
   const constraintLedger = useMemo(
     () => [
       ...competitionInvariants,
@@ -115,6 +121,30 @@ export function GuidedSetup({
         venueIndex === index ? { ...venue, ...update } : venue,
       ) as [SetupVenueValue, SetupVenueValue],
     }));
+  }
+
+  function updateTeam(teamId: string, update: Partial<SetupTeamValue>) {
+    updateDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) => team.id === teamId ? { ...team, ...update } : team),
+    }));
+  }
+
+  function swapTeams(teamId: string, otherId: string) {
+    if (!otherId) return;
+    updateDraft((current) => {
+      const team = current.teams.find((item) => item.id === teamId);
+      const other = current.teams.find((item) => item.id === otherId);
+      if (!team || !other || team.group_id === other.group_id) return current;
+      return {
+        ...current,
+        teams: current.teams.map((item) =>
+          item.id === teamId ? { ...item, group_id: other.group_id }
+          : item.id === otherId ? { ...item, group_id: team.group_id }
+          : item,
+        ),
+      };
+    });
   }
 
   async function confirmHardConstraints() {
@@ -195,6 +225,19 @@ export function GuidedSetup({
           includes play, intervals, setup, and turnover; it is not a guaranteed match
           duration.
         </p>
+        <div className="team-editor">
+          <h3>Edit teams and groups</h3>
+          <p>Rename teams or swap one team with a team in the other group. Each group always keeps four teams.</p>
+          <div className="team-groups">
+            {(["A", "B"] as const).map((code) => {
+              const groupId = initialSetup?.groups?.find((group) => group.code === code)?.id
+                ?? (code === "A" ? draft.teams[0]?.group_id : draft.teams[4]?.group_id);
+              const members = draft.teams.filter((team) => team.group_id === groupId);
+              const others = draft.teams.filter((team) => team.group_id !== groupId);
+              return <fieldset key={code}><legend>Group {code}</legend>{members.map((team) => <div key={team.id} className="team-editor-row"><label>Team display name<input value={team.display_name} onChange={(event) => updateTeam(team.id, { display_name: event.target.value })} /></label><label>Swap group with<select aria-label={`Swap ${team.display_name} group with`} defaultValue="" onChange={(event) => { swapTeams(team.id, event.target.value); event.currentTarget.value = ""; }}><option value="">Choose team</option>{others.map((other) => <option key={other.id} value={other.id}>{other.display_name}</option>)}</select></label></div>)}</fieldset>;
+            })}
+          </div>
+        </div>
       </section>
 
       <section className="setup-block" id="venues-and-location" aria-labelledby="venue-heading">
@@ -416,14 +459,19 @@ export function GuidedSetup({
             type="number"
             min="0"
             max="168"
-            value={draft.minimum_rest_minutes / 60}
-            onChange={(event) =>
-              updateDraft((current) => ({
-                ...current,
-                minimum_rest_minutes: Math.round(Number(event.target.value) * 60),
-              }))
-            }
+            value={restHoursText}
+            aria-invalid={!restHoursValid}
+            aria-describedby="minimum-rest-help"
+            onChange={(event) => {
+              const next = event.target.value;
+              setRestHoursText(next);
+              const hours = Number(next);
+              if (/^\d+$/.test(next) && Number.isInteger(hours) && hours >= 0 && hours <= 168) {
+                updateDraft((current) => ({ ...current, minimum_rest_minutes: hours * 60 }));
+              }
+            }}
           />
+          <small id="minimum-rest-help">{restHoursValid ? "Enter a whole number from 0 to 168 hours." : "Minimum rest must be a whole number from 0 to 168 hours. This value has not been saved."}</small>
         </label>
         <p className="setup-save-status" aria-live="polite">
           {saveState === "saved" && "All changes saved"}
@@ -449,7 +497,7 @@ export function GuidedSetup({
         <button
           className="primary-action"
           type="button"
-          disabled={!confirmed || setupStatus === "saving" || saveState !== "saved"}
+          disabled={!confirmed || !restHoursValid || setupStatus === "saving" || saveState !== "saved"}
           onClick={() => void confirmHardConstraints()}
         >
           Confirm and generate schedules

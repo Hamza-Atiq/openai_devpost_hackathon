@@ -28,4 +28,21 @@ describe("schedule generation progress", () => {
     expect(markup).toContain("Add more venue slots before generating.");
     expect(markup).not.toContain("Schedules ready");
   });
+
+  it("renders deterministic conflicts, concrete remedies, and an edit action", () => {
+    const markup = renderToStaticMarkup(
+      <ScheduleGenerationProgress
+        stage="failed"
+        error="Confirmed constraints and available slots are infeasible."
+        evidence={["A 160-hour rest requirement cannot fit the tournament window."]}
+        remedies={["Reduce minimum team rest or extend the tournament window."]}
+      />,
+    );
+
+    expect(markup).toContain("Likely conflicts");
+    expect(markup).toContain("160-hour rest requirement");
+    expect(markup).toContain("Ways to resolve this");
+    expect(markup).toContain("Reduce minimum team rest");
+    expect(markup).toContain('href="#format-teams"');
+  });
 });

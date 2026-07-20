@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { CrickOpsApiClient, type OfficialScheduleResponse } from "@/lib/api-client";
+import { formatVenueDateTime } from "@/lib/venue-time";
 
 import { DisruptionDeclaration } from "./disruption-declaration";
 
@@ -31,7 +32,7 @@ export function DisruptionDeclarationLive() {
     id: fixture.slot_id,
     fixture: `${fixture.code} · ${fixture.home} vs ${fixture.away}`,
     venue: fixture.venue,
-    localTime: `${new Date(fixture.starts_at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} · ${fixture.timezone}`,
+    localTime: `${formatVenueDateTime(fixture.starts_at, fixture.timezone)} · ${fixture.timezone}`,
   }));
   return (
     <DisruptionDeclaration

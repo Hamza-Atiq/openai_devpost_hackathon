@@ -118,6 +118,43 @@ def test_complete_setup_edit_is_normalized_persisted_and_restored() -> None:
     assert restored.json()["constraints"]["confirmation_state"] == "draft"
 
 
+def test_setup_edit_persists_eight_team_names_and_atomic_group_membership() -> None:
+    client = api_client()
+    created = client.post(
+        "/api/v1/workspaces", json={"sample_id": "pakistan-community-cup"}
+    ).json()
+    current = client.get("/api/v1/tournament").json()
+    payload = pakistan_setup_payload(created["tournament"]["revision"])
+    teams = current["teams"]
+    first_a = next(team for team in teams if team["group_id"] == current["groups"][0]["id"])
+    first_b = next(team for team in teams if team["group_id"] == current["groups"][1]["id"])
+    payload["teams"] = [
+        {
+            **team,
+            "display_name": "Renamed XI" if team["id"] == first_a["id"] else team["display_name"],
+            "group_id": (
+                first_b["group_id"] if team["id"] == first_a["id"]
+                else first_a["group_id"] if team["id"] == first_b["id"]
+                else team["group_id"]
+            ),
+        }
+        for team in teams
+    ]
+
+    response = client.put(
+        "/api/v1/tournament",
+        json=payload,
+        headers={"Idempotency-Key": "team-edit-001"},
+    )
+
+    assert response.status_code == 200, response.text
+    saved = response.json()
+    assert len(saved["teams"]) == 8
+    assert {len(group["team_ids"]) for group in saved["groups"]} == {4}
+    renamed = next(team for team in saved["teams"] if team["id"] == first_a["id"])
+    assert renamed["display_name"] == "Renamed XI"
+
+
 def test_setup_edit_rejects_stale_revision_without_overwriting_saved_state() -> None:
     client = api_client()
     created = client.post(

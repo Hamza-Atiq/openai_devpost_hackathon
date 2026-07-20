@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from app.api.setup_models import TournamentSetupDraftInput
 from app.domain.constraints import ConfirmationState, ConstraintSet
 from app.domain.tournament import TournamentConfig, TournamentStatus
+from app.domain.teams import Group, Team
 from app.domain.venues import SlotAvailability, SlotSource, Venue, VenueSlot
 
 
@@ -80,6 +81,19 @@ def expand_slot_patterns(
         confirmation_state=ConfirmationState.DRAFT,
         confirmed_at=None,
     )
+    teams = (
+        tuple(Team.model_validate(team.model_dump(mode="python")) for team in body.teams)
+        if body.teams is not None
+        else tournament.teams
+    )
+    groups = tuple(
+        Group(
+            id=group.id,
+            code=group.code,
+            team_ids=tuple(team.id for team in teams if team.group_id == group.id),
+        )
+        for group in tournament.groups
+    )
     return TournamentConfig.model_validate(
         {
             **tournament.model_dump(mode="python"),
@@ -88,6 +102,8 @@ def expand_slot_patterns(
             "start_date": body.start_date,
             "end_date": body.end_date,
             "status": TournamentStatus.AWAITING_CONSTRAINT_CONFIRMATION,
+            "teams": teams,
+            "groups": groups,
             "venues": venues,
             "slots": tuple(slots),
             "constraints": constraints,

@@ -100,6 +100,10 @@ def test_precheck_uses_deterministic_capacity_evidence_after_confirmation() -> N
     assert generated.status_code == 422
     assert generated.json()["code"] == "schedule_precheck_failed"
     assert "available capacity" in generated.json()["detail"].lower()
+    assert generated.json()["evidence"][0]["code"] == "insufficient_capacity"
+    assert generated.json()["evidence"][0]["message"]
+    assert generated.json()["remedies"][0]["code"] == "add_venue_slots"
+    assert generated.json()["remedies"][0]["description"]
 
 
 def test_precheck_and_generation_reject_stale_revisions() -> None:

@@ -42,6 +42,8 @@ export function GuidedSetupLive() {
   const [conflict, setConflict] = useState<"stale" | null>(null);
   const [generationStage, setGenerationStage] = useState<GenerationStage>("idle");
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationEvidence, setGenerationEvidence] = useState<string[]>([]);
+  const [generationRemedies, setGenerationRemedies] = useState<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDraftRef = useRef<TournamentSetupSaveInput | null>(null);
   const saveInFlightRef = useRef(false);
@@ -138,11 +140,15 @@ export function GuidedSetupLive() {
     setSaveState("dirty");
     setGenerationStage("idle");
     setGenerationError(null);
+    setGenerationEvidence([]);
+    setGenerationRemedies([]);
   }
 
   async function confirmAndGenerate(input: Parameters<CrickOpsApiClient["confirmSetup"]>[0]) {
     if (generationStage !== "idle" && generationStage !== "failed") return;
     setGenerationError(null);
+    setGenerationEvidence([]);
+    setGenerationRemedies([]);
     setGenerationStage("confirming");
     try {
       const readiness = await clientRef.current!.confirmSetup(input);
@@ -160,6 +166,14 @@ export function GuidedSetupLive() {
       router.push(`/workspace/options?run_id=${encodeURIComponent(run.run_id)}`);
     } catch (error) {
       setGenerationStage("failed");
+      if (error instanceof ApiProblemError) {
+        setGenerationEvidence((error.evidence ?? []).flatMap((item) =>
+          typeof item.message === "string" ? [item.message] : [],
+        ));
+        setGenerationRemedies((error.remedies ?? []).flatMap((item) =>
+          typeof item.description === "string" ? [item.description] : [],
+        ));
+      }
       setGenerationError(error instanceof Error ? error.message : "Schedule generation failed safely.");
       throw error;
     }
@@ -202,7 +216,12 @@ export function GuidedSetupLive() {
         onDraftChange={handleDraftChange}
         onConfirmAndGenerate={confirmAndGenerate}
       />
-      <ScheduleGenerationProgress stage={generationStage} error={generationError} />
+      <ScheduleGenerationProgress
+        stage={generationStage}
+        error={generationError}
+        evidence={generationEvidence}
+        remedies={generationRemedies}
+      />
     </>
   );
 }

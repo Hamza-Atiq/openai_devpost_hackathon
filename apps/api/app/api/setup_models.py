@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import Field
 
-from app.domain.common import DomainModel
+from app.domain.common import UUID7, DomainModel
 from app.domain.tournament import MatchFormatPreset, PrioritySettings, TournamentConfig
 
 
@@ -19,12 +19,19 @@ class SetupVenueInput(DomainModel):
     iana_time_zone: str = Field(min_length=1, max_length=80)
 
 
+class SetupTeamInput(DomainModel):
+    id: UUID7
+    display_name: str = Field(min_length=1, max_length=100)
+    group_id: UUID7
+
+
 class TournamentSetupDraftInput(DomainModel):
     expected_revision: int = Field(ge=0)
     match_format_preset: MatchFormatPreset
     start_date: date
     end_date: date
     venues: tuple[SetupVenueInput, SetupVenueInput]
+    teams: tuple[SetupTeamInput, ...] | None = Field(default=None, min_length=8, max_length=8)
     weekday_start_times: tuple[time, ...] = Field(min_length=1, max_length=8)
     weekend_start_times: tuple[time, ...] = Field(min_length=1, max_length=8)
     blackout_dates: tuple[date, ...] = Field(default=(), max_length=21)

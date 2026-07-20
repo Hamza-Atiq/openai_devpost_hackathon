@@ -1,3 +1,5 @@
+import { formatVenueTime } from "./venue-time";
+
 export type FixtureStage = "group" | "semifinal" | "final";
 export type FixtureChange = "preserved" | "changed" | "new";
 
@@ -27,10 +29,5 @@ export function groupFixturesByLocalDate(fixtures: ScheduleFixtureView[]): Local
 }
 
 export function localTimeLabel(startsAt: string, timezone: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  }).format(new Date(startsAt));
+  return formatVenueTime(startsAt, timezone);
 }
