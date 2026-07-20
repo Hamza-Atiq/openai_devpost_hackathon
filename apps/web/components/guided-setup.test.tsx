@@ -23,6 +23,8 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("System invariant");
     expect(markup).toContain("No additional minimum rest configured");
     expect(markup).toContain("Soft preference");
+    expect((markup.match(/class="ledger-rule-status/g) ?? [])).toHaveLength(5);
+    expect((markup.match(/class="ledger-rule-content/g) ?? [])).toHaveLength(5);
     expect(markup).toContain("Confirm and generate schedules");
     expect(markup).toContain("Confirmation pending");
     expect(markup).toContain('aria-live="polite"');

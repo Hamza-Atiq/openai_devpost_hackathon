@@ -398,8 +398,15 @@ export function GuidedSetup({
         <div className="ledger-list">
           {constraintLedger.map(([name, detail, kind]) => (
             <div className="ledger-row" key={name}>
-              <span className={kind === "Soft preference" ? "rule-soft" : "rule-hard"}>{kind}</span>
-              <div><strong>{name}</strong><p>{detail}</p></div>
+              <span
+                className={`ledger-rule-status ${kind === "Soft preference" ? "rule-soft" : "rule-hard"}`}
+              >
+                {kind}
+              </span>
+              <div className="ledger-rule-content">
+                <strong>{name}</strong>
+                <p>{detail}</p>
+              </div>
             </div>
           ))}
         </div>
