@@ -65,6 +65,7 @@ export function WeatherRiskPanelLive({ runId, refreshVersion = 0 }: { runId?: st
         label: fixture.label,
         venue: fixture.venue,
         startsAt: fixture.starts_at,
+        timezone: fixture.timezone,
         risk: fixture.risk,
       }))}
     />

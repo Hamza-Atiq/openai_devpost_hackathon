@@ -1,10 +1,13 @@
 import React from "react";
 
+import { formatVenueDateTime } from "@/lib/venue-time";
+
 export type FixtureWeatherView = {
   id: string;
   label: string;
   venue: string;
   startsAt: string;
+  timezone: string;
   risk: number | null;
 };
 
@@ -38,13 +41,13 @@ export function WeatherRiskPanel({ coverage, issuedAt, stale, provider, fixtures
       </header>
       {stale && <div className="weather-warning" role="status"><strong>Forecast is stale</strong><span>Refresh before using these scores for a scheduling decision.</span></div>}
       {coverage < 100 && <div className="weather-warning" role="status"><strong>{coverageLabel}</strong><span>Uncovered fixtures remain Unknown and receive the configured missing-coverage penalty.</span></div>}
+      <div className="weather-attribution"><span>Issued {issuedAt}</span><span>{weatherAttribution(provider, issuedAt)}</span></div>
       <div className="risk-ledger" role="list" aria-label="Fixture weather risks">
         {fixtures.length ? fixtures.map((fixture) => {
           const presentation = riskPresentation(fixture.risk);
-          return <article className={`risk-row risk-${presentation.level}`} role="listitem" key={fixture.id}><span className="risk-symbol" aria-hidden="true">{presentation.symbol}</span><div><strong>{fixture.id} · {fixture.label}</strong><span>{fixture.venue} · <time dateTime={fixture.startsAt}>{new Date(fixture.startsAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</time></span></div><div className="risk-reading"><strong>{fixture.risk === null ? "—" : fixture.risk.toFixed(1)}</strong><span>{presentation.label}</span></div></article>;
+          return <article className={`risk-row risk-${presentation.level}`} role="listitem" key={fixture.id}><span className="risk-symbol" aria-hidden="true">{presentation.symbol}</span><div><strong>{fixture.id} · {fixture.label}</strong><span>{fixture.venue} · <time dateTime={fixture.startsAt}>{formatVenueDateTime(fixture.startsAt, fixture.timezone)}</time> · {fixture.timezone}</span></div><div className="risk-reading"><strong>{fixture.risk === null ? "—" : fixture.risk.toFixed(1)}</strong><span>{presentation.label}</span></div></article>;
         }) : <div className="operation-status">No scheduled fixture weather is available.</div>}
       </div>
-      <footer className="weather-attribution"><span>Issued {issuedAt}</span><span>{weatherAttribution(provider, issuedAt)}</span></footer>
       <p className="weather-disclaimer">Risk scores are planning guidance. CrickOps does not make official safety, medical, venue, or regulatory decisions and cannot guarantee prevention of washouts.</p>
     </section>
   );

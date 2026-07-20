@@ -9,6 +9,8 @@ export type GenerationStage =
 type ScheduleGenerationProgressProps = {
   stage: GenerationStage;
   error?: string | null;
+  evidence?: string[];
+  remedies?: string[];
 };
 
 const stages = [
@@ -17,7 +19,7 @@ const stages = [
   ["validating", "Independently validating", "Verifying every hard constraint before any option is shown."],
 ] as const;
 
-export function ScheduleGenerationProgress({ stage, error }: ScheduleGenerationProgressProps) {
+export function ScheduleGenerationProgress({ stage, error, evidence = [], remedies = [] }: ScheduleGenerationProgressProps) {
   if (stage === "idle") return null;
   const activeIndex = stages.findIndex(([name]) => name === stage);
   const busy = stage !== "ready" && stage !== "failed";
@@ -28,6 +30,9 @@ export function ScheduleGenerationProgress({ stage, error }: ScheduleGenerationP
         <div className="generation-failure" role="alert">
           <strong>Generation stopped safely</strong>
           <p>{error ?? "Review the setup and try again. No invalid schedule was created."}</p>
+          {evidence.length > 0 && <><h3>Likely conflicts</h3><ul>{evidence.map((item) => <li key={item}>{item}</li>)}</ul></>}
+          {remedies.length > 0 && <><h3>Ways to resolve this</h3><ul>{remedies.map((item) => <li key={item}>{item}</li>)}</ul></>}
+          <a href="#format-teams">Edit tournament setup</a>
         </div>
       ) : (
         <>

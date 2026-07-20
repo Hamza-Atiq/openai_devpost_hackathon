@@ -18,12 +18,16 @@ export type SetupPriorities = {
   minimize_schedule_changes: boolean;
 };
 
+export type SetupTeamValue = { id: string; display_name: string; group_id: string };
+export type SetupGroupValue = { id: string; code: "A" | "B"; team_ids: [string, string, string, string] };
+
 export type TournamentSetupSaveInput = {
   expected_revision: number;
   match_format_preset: MatchFormatPreset;
   start_date: string;
   end_date: string;
   venues: [SetupVenueValue, SetupVenueValue];
+  teams: SetupTeamValue[];
   weekday_start_times: string[];
   weekend_start_times: string[];
   blackout_dates: string[];
@@ -41,6 +45,8 @@ export type TournamentSetupView = {
   start_date: string;
   end_date: string;
   venues: [SetupVenueValue, SetupVenueValue];
+  teams: SetupTeamValue[];
+  groups: [SetupGroupValue, SetupGroupValue];
   priorities: SetupPriorities;
   setup_draft: {
     weekday_start_times: string[];
@@ -53,6 +59,14 @@ export type TournamentSetupView = {
 
 export function shortTime(value: string): string {
   return value.slice(0, 5);
+}
+
+export function defaultSetupTeams(): SetupTeamValue[] {
+  return Array.from({ length: 8 }, (_, index) => ({
+    id: `00000000-0000-7000-8000-${String(index + 1).padStart(12, "0")}`,
+    display_name: `Team ${index + 1}`,
+    group_id: index < 4 ? "00000000-0000-7000-8000-000000000101" : "00000000-0000-7000-8000-000000000102",
+  }));
 }
 
 export function draftFromSetup(setup: TournamentSetupView): TournamentSetupSaveInput {
@@ -72,6 +86,7 @@ export function draftFromSetup(setup: TournamentSetupView): TournamentSetupSaveI
       SetupVenueValue,
       SetupVenueValue,
     ],
+    teams: (setup.teams ?? defaultSetupTeams()).map((team) => ({ ...team })),
     weekday_start_times: setup.setup_draft.weekday_start_times.map(shortTime),
     weekend_start_times: setup.setup_draft.weekend_start_times.map(shortTime),
     blackout_dates: [...setup.setup_draft.blackout_dates],

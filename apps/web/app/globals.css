@@ -216,7 +216,8 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .version-history ul { margin: 0; padding: 0; list-style: none; }
 .version-history li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
 .version-history li span { display: grid; gap: .2rem; } .version-history small { color: var(--muted); }
-.topbar { position: sticky; top: 0; z-index: 5; background: rgba(242,245,239,.95); }
+.topbar { position: sticky; top: 0; z-index: 5; background: #f2f5ef; }
+.app-dialog-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: rgba(12, 31, 22, .58); }
 .topbar nav { display: flex; gap: 1.3rem; }
 .topbar nav a { color: var(--muted); text-decoration: none; font-size: .86rem; }
 .topbar nav a[aria-current] { color: var(--pitch-ink); font-weight: 800; }

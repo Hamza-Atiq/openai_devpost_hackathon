@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { WeatherRiskPanel } from "./weather-risk-panel";
 
 const fixtures = [
-  { id: "G01", label: "Azure XI vs Cedar XI", venue: "Riverside", startsAt: "2026-07-22T10:00:00+08:00", risk: 78 },
+  { id: "G01", label: "Azure XI vs Cedar XI", venue: "Riverside", startsAt: "2026-07-22T10:00:00+08:00", timezone: "Asia/Kuala_Lumpur", risk: 78 },
 ];
 
 function panel(overrides: Partial<React.ComponentProps<typeof WeatherRiskPanel>> = {}) {
@@ -37,5 +37,11 @@ describe("Weather risk panel", () => {
     expect(markup).toContain("Forecast is stale");
     expect(markup).toContain("High risk");
     expect(markup).toContain("▲");
+  });
+
+  it("shows the fixture in its venue timezone", () => {
+    const markup = renderToStaticMarkup(panel());
+    expect(markup).toContain("22 Jul, 10:00");
+    expect(markup).toContain("Asia/Kuala_Lumpur");
   });
 });

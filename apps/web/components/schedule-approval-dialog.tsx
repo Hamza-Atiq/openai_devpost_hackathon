@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { AppDialog } from "./app-dialog";
 
 type ScheduleApprovalDialogProps = {
   profileLabel: string;
@@ -12,7 +13,7 @@ type ScheduleApprovalDialogProps = {
 export function ScheduleApprovalDialog({ profileLabel, pending = false, onCancel, onApprove }: ScheduleApprovalDialogProps) {
   const [confirmed, setConfirmed] = useState(false);
   return (
-    <div className="approval-dialog" role="dialog" aria-modal="true" aria-labelledby="approval-title">
+    <AppDialog labelledBy="approval-title" onClose={onCancel} closeDisabled={pending}>
       <div className="approval-dialog-mark" aria-hidden="true">✓</div>
       <div>
         <p className="eyebrow">Official workspace baseline</p>
@@ -24,6 +25,6 @@ export function ScheduleApprovalDialog({ profileLabel, pending = false, onCancel
           <button className="primary-action" type="button" disabled={!confirmed || pending} onClick={() => void onApprove()}>{pending ? "Approving…" : "Set as official workspace schedule"}</button>
         </div>
       </div>
-    </div>
+    </AppDialog>
   );
 }

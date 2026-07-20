@@ -217,6 +217,7 @@ export class ApiProblemError extends Error {
   readonly status: number;
   readonly correlationId: string;
   readonly retryable: boolean;
+  readonly evidence: ProblemDetails["evidence"];
   readonly remedies: ProblemDetails["remedies"];
 
   constructor(problem: ProblemDetails) {
@@ -226,6 +227,7 @@ export class ApiProblemError extends Error {
     this.status = problem.status;
     this.correlationId = problem.correlation_id;
     this.retryable = problem.retryable;
+    this.evidence = problem.evidence;
     this.remedies = problem.remedies;
   }
 }

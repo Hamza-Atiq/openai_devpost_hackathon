@@ -381,6 +381,8 @@ def build_schedule_router(
                     "Available capacity or chronology cannot satisfy the tournament. "
                     f"{evidence}"
                 ),
+                evidence=tuple(item.model_dump(mode="json") for item in precheck.evidence),
+                remedies=tuple(item.model_dump(mode="json") for item in precheck.remedies),
             )
         requested = {value.replace("_", "-") for value in body.profiles}
         required = {"balanced", "weather-first", "fairness-first"}
@@ -486,11 +488,38 @@ def build_schedule_router(
             },
         )
         if batch.failures:
+            failure_reasons = tuple(
+                {
+                    "code": "solver_infeasible",
+                    "message": (
+                        f"{failure.profile.value} could not satisfy all confirmed hard "
+                        f"constraints ({failure.reason})."
+                    ),
+                }
+                for failure in batch.failures
+            )
             raise APIProblem(
                 status=422,
                 code="schedule_infeasible",
                 title="No valid schedule exists",
                 detail="Confirmed constraints and available slots are infeasible.",
+                evidence=failure_reasons,
+                remedies=(
+                    {
+                        "code": "review_hard_constraints",
+                        "description": (
+                            "Review minimum rest, required fixture placements, and team "
+                            "or venue availability."
+                        ),
+                    },
+                    {
+                        "code": "add_venue_slots",
+                        "description": (
+                            "Add eligible venue slots or extend the tournament window, "
+                            "then reconfirm the setup."
+                        ),
+                    },
+                ),
             )
         run_id = str(uuid4())
         options: list[dict[str, object]] = []

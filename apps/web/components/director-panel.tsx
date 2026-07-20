@@ -9,10 +9,12 @@ import {
   type SystemModeResponse,
 } from "@/lib/api-client";
 import { workspaceQueryCache } from "@/lib/query-cache";
+import { AppDialog } from "./app-dialog";
 
 export function DirectorPanel() {
   const router = useRouter();
   const [pending, setPending] = useState<"reset" | "delete" | null>(null);
+  const [confirmation, setConfirmation] = useState<"reset" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<SystemModeResponse | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -55,7 +57,7 @@ export function DirectorPanel() {
   }
 
   async function resetDemo() {
-    if (!window.confirm("Reset this workspace and load the international sample?")) return;
+    setConfirmation(null);
     setPending("reset");
     setError(null);
     try {
@@ -70,7 +72,7 @@ export function DirectorPanel() {
   }
 
   async function deleteWorkspace() {
-    if (!window.confirm("Delete this guest workspace and its tournament data?")) return;
+    setConfirmation(null);
     setPending("delete");
     setError(null);
     try {
@@ -127,7 +129,7 @@ export function DirectorPanel() {
           <div className="director-turn" aria-live="polite">
             {turn?.message ? (
               <>
-                <strong>Tournament Director</strong>
+                <strong>Director response</strong>
                 <p>{turn.message}</p>
                 {turn.proposed_state_changes.length > 0 && (
                   <div className="director-proposals">
@@ -151,16 +153,17 @@ export function DirectorPanel() {
       )}
       <div className="workspace-actions" aria-label="Workspace data actions">
         <a href="/api/v1/workspace/export">Export tournament</a>
-        <button disabled={pending !== null} onClick={resetDemo} type="button">
+        <button disabled={pending !== null} onClick={() => setConfirmation("reset")} type="button">
           {pending === "reset" ? "Resetting…" : "Reset demo"}
         </button>
-        <button disabled={pending !== null} onClick={deleteWorkspace} type="button">
+        <button disabled={pending !== null} onClick={() => setConfirmation("delete")} type="button">
           {pending === "delete" ? "Deleting…" : "Delete workspace"}
         </button>
       </div>
       <p className="director-action-status" aria-live="polite">
         {error ?? "Guest data expires after seven days of inactivity; product-wide feedback is opt-in only."}
       </p>
+      {confirmation && <AppDialog labelledBy="workspace-confirmation-title" onClose={() => setConfirmation(null)} closeDisabled={pending !== null}><div><p className="eyebrow">Workspace data action</p><h2 id="workspace-confirmation-title">{confirmation === "reset" ? "Reset this demo workspace?" : "Delete this guest workspace?"}</h2><p>{confirmation === "reset" ? "The current demo state will be replaced with the international sample." : "This permanently removes this guest workspace and its tournament data."}</p><div className="approval-dialog-actions"><button type="button" className="secondary-action" onClick={() => setConfirmation(null)}>Cancel</button><button type="button" className="primary-action" onClick={() => void (confirmation === "reset" ? resetDemo() : deleteWorkspace())}>{confirmation === "reset" ? "Reset demo workspace" : "Delete guest workspace"}</button></div></div></AppDialog>}
     </aside>
   );
 }
