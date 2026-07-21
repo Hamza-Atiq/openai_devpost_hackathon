@@ -6,8 +6,8 @@ from zoneinfo import ZoneInfo
 
 from app.api.setup_models import TournamentSetupDraftInput
 from app.domain.constraints import ConfirmationState, ConstraintSet
-from app.domain.tournament import TournamentConfig, TournamentStatus
 from app.domain.teams import Group, Team
+from app.domain.tournament import TournamentConfig, TournamentStatus
 from app.domain.venues import SlotAvailability, SlotSource, Venue, VenueSlot
 
 
