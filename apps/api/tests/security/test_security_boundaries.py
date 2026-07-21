@@ -77,6 +77,15 @@ def test_workspace_mutations_require_allowed_origin_and_double_submit_token() ->
     assert accepted.status_code == 200
 
 
+def test_api_responses_include_browser_security_headers() -> None:
+    response = _client().get("/health/live")
+
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+
+
 def test_untrusted_origin_cannot_bootstrap_workspace() -> None:
     response = _client().post(
         "/api/v1/workspaces",

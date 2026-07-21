@@ -2,10 +2,11 @@ import asyncio
 from types import SimpleNamespace
 
 from app.agents.director import SpecialistRequest
-from app.agents.runtime import normalize_specialist_requests
+from app.agents.runtime import _workspace_summary, normalize_specialist_requests
 from app.agents.schemas import AgentRole
 from app.agents.specialist_evidence import build_specialist_request
 from app.agents.strategy import StrategyInput
+from app.agents.weather import WeatherAnalysisInput
 from app.agents.workflow_orchestrator import WorkflowAgentOrchestrator
 from app.api.workspace import GuestWorkspaceStore
 from app.domain.samples import load_sample
@@ -80,6 +81,44 @@ def test_option_metric_question_always_routes_to_strategy_evidence() -> None:
     )
 
     assert AgentRole.SCHEDULING_STRATEGY in {request.role for request in requests}
+
+
+def test_weather_request_is_not_silently_dropped() -> None:
+    store = GuestWorkspaceStore()
+    _token, workspace = store.create(load_sample("global-community-cup"))
+
+    request = build_specialist_request(
+        workspace,
+        SpecialistRequest(
+            role=AgentRole.WEATHER_INTELLIGENCE,
+            reason="Explain current weather evidence",
+            required_evidence=("weather",),
+        ),
+        "Which option has the lowest weather risk?",
+    )
+
+    assert request is not None
+    assert isinstance(request.payload, WeatherAnalysisInput)
+    assert request.consumed_fields == ("weather",)
+
+
+def test_workspace_summary_identifies_the_current_official_version() -> None:
+    store = GuestWorkspaceStore()
+    _token, workspace = store.create(load_sample("global-community-cup"))
+    workspace.official_versions.extend(
+        [
+            {"version_id": "version-1", "version_number": 1},
+            {"version_id": "version-2", "version_number": 2},
+        ]
+    )
+
+    summary = _workspace_summary(workspace)
+
+    assert summary["official_version_count"] == 2
+    assert summary["current_official_version"] == {
+        "version_id": "version-2",
+        "version_number": 2,
+    }
 
 
 def test_rules_request_uses_current_tournament_revision_and_user_text() -> None:

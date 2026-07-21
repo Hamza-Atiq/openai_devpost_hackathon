@@ -111,6 +111,11 @@ class StubDirectorRuntime:
         }
 
 
+class FailingDirectorRuntime:
+    async def run_turn(self, *, workspace, user_message: str):
+        raise RuntimeError("provider SDK failure")
+
+
 def test_director_turn_invokes_runtime_and_audits_safe_provenance() -> None:
     runtime = StubDirectorRuntime()
     application = create_app(director_runtime=runtime)
@@ -162,3 +167,19 @@ def test_director_turn_in_deterministic_mode_never_fabricates_a_reply() -> None:
     assert response.json()["message"] is None
     assert response.json()["fabricated_agent_response"] is False
     assert response.json()["unavailable_reason"]
+
+
+def test_director_provider_failure_returns_visible_degraded_response() -> None:
+    application = create_app(director_runtime=FailingDirectorRuntime())
+    client = TestClient(application, base_url="https://testserver")
+    client.post("/api/v1/workspaces", json={"sample_id": "global-community-cup"})
+
+    response = client.post(
+        "/api/v1/director/turn",
+        json={"message": "Which schedule should I choose?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "deterministic"
+    assert response.json()["message"] is None
+    assert "Structured setup" in response.json()["unavailable_reason"]

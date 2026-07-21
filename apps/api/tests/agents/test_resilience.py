@@ -228,3 +228,23 @@ def test_provider_budget_stops_retries_then_enters_deterministic_mode() -> None:
     assert deterministic.mode is AgentMode.DETERMINISTIC
     assert deterministic.attempt_count == 0
     assert calls == ["openai", "configured-fallback"]
+
+
+def test_unexpected_provider_sdk_exception_enters_degraded_mode() -> None:
+    async def invoke(_route):
+        error = RuntimeError("upstream quota failure")
+        error.status_code = 429  # type: ignore[attr-defined]
+        raise error
+
+    result = asyncio.run(
+        AgentResilienceManager(
+            router=_router(fallback=False),
+            health=DependencyHealthRegistry(),
+            sleep=_no_sleep,
+            retry_jitter=lambda: 0,
+        ).run(invoke)
+    )
+
+    assert result.mode is AgentMode.DETERMINISTIC
+    assert result.deterministic is not None
+    assert "deterministic_active" in result.transitions

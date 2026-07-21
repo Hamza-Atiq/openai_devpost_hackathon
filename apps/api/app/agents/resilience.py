@@ -148,6 +148,11 @@ class AgentResilienceManager:
             except (TypeError, ValueError) as error:
                 last_error = ProviderValidationError("provider output failed validation")
                 last_error.__cause__ = error
+            except Exception as error:
+                # Provider SDKs expose their own exception hierarchies. Normalize any
+                # exception crossing this boundary so an outage cannot escape as HTTP 500.
+                last_error = TransientProviderError("provider request failed")
+                last_error.__cause__ = error
             else:
                 breaker.success()
                 self._health.record(

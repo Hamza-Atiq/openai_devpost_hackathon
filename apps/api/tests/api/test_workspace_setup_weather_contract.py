@@ -71,6 +71,24 @@ def test_guest_workspace_cookie_restores_only_its_sample() -> None:
     assert restored.headers["vary"] == "Cookie"
 
 
+def test_blank_workspace_starts_with_an_editable_version_one_skeleton() -> None:
+    client = api_client()
+
+    created = client.post("/api/v1/workspaces", json={"sample_id": None})
+    setup = client.get("/api/v1/tournament")
+
+    assert created.status_code == 201
+    assert created.json()["tournament"] is not None
+    assert setup.status_code == 200
+    tournament = setup.json()
+    assert tournament["name"] == "Untitled Cricket Tournament"
+    assert len(tournament["teams"]) == 8
+    assert len(tournament["groups"]) == 2
+    assert {len(group["team_ids"]) for group in tournament["groups"]} == {4}
+    assert len(tournament["venues"]) == 2
+    assert tournament["status"] == "draft_setup"
+
+
 def test_missing_workspace_uses_problem_details() -> None:
     response = api_client().get("/api/v1/workspace")
 

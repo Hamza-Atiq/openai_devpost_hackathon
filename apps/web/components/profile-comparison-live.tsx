@@ -14,7 +14,7 @@ const labels = {
 
 type LoadedComparison = Awaited<ReturnType<CrickOpsApiClient["getScheduleComparison"]>>;
 
-export function ProfileComparisonLive({ initialRunId }: { initialRunId?: string }) {
+export function ProfileComparisonLive({ initialRunId, onRunChange }: { initialRunId?: string; onRunChange?: (runId: string) => void }) {
   const [loaded, setLoaded] = useState<LoadedComparison | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(initialRunId));
@@ -49,13 +49,15 @@ export function ProfileComparisonLive({ initialRunId }: { initialRunId?: string 
     const identicalProfiles = response.identical_solution_groups.flatMap((group) =>
       group.map((profile) => labels[profile as keyof typeof labels]),
     );
-    return { options, identicalProfiles };
+    return { options, identicalProfiles, runId: response.run_id };
   }
 
   async function generate(priorities?: Record<string, number>) {
     const response = await new CrickOpsApiClient().generateScheduleOptions(
       priorities as CustomPriorities | undefined,
     );
+    setLoaded(response);
+    onRunChange?.(response.run_id);
     return mapComparison(response);
   }
 

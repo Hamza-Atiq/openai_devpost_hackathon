@@ -121,7 +121,10 @@ def test_generation_passes_real_choices_and_weather_penalties_to_profiles(
         for draft_id in run["draft_ids"]
     }
     assert len(signatures) >= 2
-    assert metrics_by_profile["fairness-first"] != metrics_by_profile["weather-first"]
+    assert (
+        metrics_by_profile["fairness-first"]["group_rest_fairness"]
+        >= metrics_by_profile["weather-first"]["group_rest_fairness"]
+    )
     eligibility = captured["eligibility"]
     assert all(
         len(slot_ids) == len(workspace.tournament.slots) for slot_ids in eligibility.values()
@@ -376,9 +379,10 @@ def test_supported_disruption_produces_validated_minimum_change_diff(
         "repair_generated",
         "disruption_declared",
         "schedule_approved",
-        "schedule_options_generated",
-        "constraints_confirmed",
-    ]
+            "schedule_options_generated",
+            "constraints_confirmed",
+            "sample_loaded",
+        ]
     observations = client.app.state.observability.records_for(correlation_id)
     assert {record.component for record in observations} >= {
         "http",

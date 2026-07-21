@@ -20,6 +20,8 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("Venue display name");
     expect(markup).toContain("City, country, area, or postal code");
     expect(markup).toContain("Use manual coordinates");
+    expect(markup).toContain("Enter a decimal from -90 to 90");
+    expect(markup).toContain("Enter a decimal from -180 to 180");
     expect(markup).toContain("Shared tournament timezone");
     expect(markup).toContain("Weekday start time");
     expect(markup).toContain("Weekend start times");

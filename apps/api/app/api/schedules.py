@@ -587,6 +587,21 @@ def build_schedule_router(
         workspace.idempotency[f"generation:{idempotency_key}"] = accepted
         return accepted
 
+    @router.get("/schedule-runs/latest")
+    def read_latest_schedule_run(
+        workspace: Annotated[GuestWorkspace, Depends(require_workspace)],
+    ) -> dict[str, object]:
+        for run_id in reversed(workspace.schedule_runs):
+            run = workspace.schedule_runs[run_id]
+            if run.get("status") == "completed":
+                return {"run_id": run_id, "status": "completed"}
+        raise APIProblem(
+            status=404,
+            code="schedule_run_not_found",
+            title="No generated options yet",
+            detail="Complete Setup and generate schedule options first.",
+        )
+
     @router.get("/schedule-runs/{run_id}")
     def read_schedule_run(
         run_id: str,

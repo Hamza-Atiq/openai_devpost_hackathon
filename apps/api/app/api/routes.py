@@ -16,7 +16,7 @@ from app.api.setup_models import (
 )
 from app.api.workspace import GuestWorkspace, GuestWorkspaceStore
 from app.domain.common import DomainModel
-from app.domain.samples import available_samples, load_sample
+from app.domain.samples import available_samples, load_blank_tournament, load_sample
 from app.limits.public_demo import PublicDemoProtection, UsageAction
 from app.security.csrf import (
     CSRF_COOKIE_NAME,
@@ -71,7 +71,7 @@ class PrecheckInput(DomainModel):
 
 def _load_requested_sample(sample_id: str | None):
     if sample_id is None:
-        return None
+        return load_blank_tournament()
     try:
         return load_sample(sample_id)
     except ValueError as error:
@@ -205,6 +205,18 @@ def build_v1_router(
         validate_bootstrap_origin(request)
         token, workspace = store.create(_load_requested_sample(body.sample_id))
         workspace.weather = sample_weather(workspace)
+        if operations is not None:
+            append_audit_event(
+                operations,
+                workspace.workspace_id,
+                event_type="sample_loaded" if body.sample_id else "blank_tournament_created",
+                summary=(
+                    f"Organizer loaded the {body.sample_id} sample."
+                    if body.sample_id
+                    else "Organizer created an editable blank tournament."
+                ),
+                structured_payload={"sample_id": body.sample_id},
+            )
         # The bootstrap request has no incoming guest cookie, so the application
         # middleware cannot persist route-level initialization after the response.
         store.persist(token)

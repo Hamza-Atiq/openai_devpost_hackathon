@@ -57,6 +57,28 @@ def load_sample(sample_id: str, *, reference_date: date | None = None) -> Tourna
     )
 
 
+def load_blank_tournament(*, reference_date: date | None = None) -> TournamentConfig:
+    """Build an editable V1 skeleton without weakening fixed competition boundaries."""
+    template_path = _SAMPLE_DIRECTORY / "global-community-cup.json"
+    template = SampleSeed.model_validate_json(template_path.read_text(encoding="utf-8"))
+    seed = template.model_copy(
+        update={
+            "sample_id": "blank-tournament",
+            "name": "Untitled Cricket Tournament",
+            "team_names": tuple(f"Team {index}" for index in range(1, 9)),
+            "venues": (
+                template.venues[0].model_copy(update={"display_name": "Venue 1"}),
+                template.venues[1].model_copy(update={"display_name": "Venue 2"}),
+            ),
+        }
+    )
+    return _expand_seed(
+        seed,
+        sample_index=len(available_samples()) + 1,
+        reference_date=reference_date or date.today(),
+    )
+
+
 def _uuid7(sample_index: int, entity_number: int) -> UUID:
     combined = sample_index * 10_000 + entity_number
     return UUID(f"01890f3e-0001-7000-8000-{combined:012x}")

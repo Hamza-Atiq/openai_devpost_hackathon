@@ -73,7 +73,7 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .identical-note { display: grid; grid-template-columns: auto 1fr; gap: .45rem 1.2rem; margin: 1rem 0; padding: 1rem 1.15rem; border-left: 4px solid var(--weather); background: #eaf4f7; }
 .identical-note strong { font-family: "Arial Narrow", sans-serif; text-transform: uppercase; }
 .identical-note span { color: #365c68; }
-.comparison-grid { --option-count: 3; display: grid; grid-template-columns: 190px repeat(var(--option-count), minmax(220px, 1fr)); border: 1px solid #aebdac; background: var(--paper); overflow-x: auto; box-shadow: 16px 16px 0 rgba(31,107,69,.07); }
+.comparison-grid { --option-count: 3; display: grid; grid-template-columns: minmax(150px, 175px) repeat(var(--option-count), minmax(190px, 1fr)); border: 1px solid #aebdac; background: var(--paper); overflow-x: auto; box-shadow: 16px 16px 0 rgba(31,107,69,.07); }
 .metric-spine, .profile-column { display: grid; grid-template-rows: 150px repeat(6, 84px) minmax(148px, auto) 68px; }
 .metric-spine { background: #e9eee6; border-right: 1px solid var(--line); }
 .metric-spine > span { display: flex; flex-direction: column; justify-content: center; padding: .8rem 1rem; border-bottom: 1px solid var(--line); color: var(--pitch-ink); font-size: .76rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
@@ -229,6 +229,10 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .status-dot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--crease); box-shadow: 0 0 0 4px #e9f1d6; }
 .director-status { margin: 0; color: var(--muted); font-size: .76rem; }
 .director-message { margin: 1.5rem 0; padding: 1rem; background: var(--mist); line-height: 1.55; font-size: .9rem; }
+.director-chat { display: grid; gap: .7rem; margin-top: 1rem; }
+.director-chat label { color: var(--muted); font-size: .76rem; font-weight: 750; }
+.director-chat textarea { width: 100%; min-height: 120px; resize: vertical; padding: .8rem; border: 1px solid var(--line); background: white; color: var(--pitch-ink); font: inherit; line-height: 1.45; }
+.director-turn { padding: .8rem; border-left: 3px solid var(--weather); background: var(--mist); font-size: .82rem; line-height: 1.5; }
 .quiet-button { width: 100%; padding: .75rem; color: var(--boundary); background: transparent; border: 1px solid var(--boundary); font-weight: 800; }
 .workspace-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .75rem; }
 .workspace-actions a, .workspace-actions button { min-height: 44px; padding: .65rem .7rem; border: 1px solid var(--line); background: transparent; color: var(--pitch-ink); font-size: .72rem; font-weight: 750; text-align: center; text-decoration: none; cursor: pointer; }
@@ -260,6 +264,15 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .format-switch label span { grid-column: 2; color: var(--muted); font-size: .8rem; }
 .allocation-note { padding: .9rem 1rem; color: var(--muted); background: var(--mist); font-size: .82rem; line-height: 1.5; }
 .allocation-note b { color: var(--pitch-ink); }
+.team-editor { margin-top: 1.25rem; padding: 1.2rem; border: 1px solid var(--line); background: var(--mist); }
+.team-editor > h3 { margin: 0; font-size: 1.25rem; }
+.team-editor > p { color: var(--muted); font-size: .82rem; }
+.team-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.team-groups fieldset { display: grid; gap: .8rem; min-width: 0; padding: 1rem; border: 1px solid var(--line); background: var(--paper); }
+.team-groups legend { padding: 0 .4rem; color: var(--boundary); font: 800 .75rem ui-monospace, monospace; text-transform: uppercase; }
+.team-editor-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, .7fr); gap: .65rem; }
+.team-editor-row label { display: grid; gap: .35rem; color: var(--muted); font-size: .7rem; font-weight: 750; }
+.team-editor-row input, .team-editor-row select { width: 100%; min-width: 0; padding: .65rem; border: 1px solid var(--line); background: white; color: var(--pitch-ink); }
 .venue-board { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
 .venue-card { display: grid; gap: 1rem; padding: 1.2rem; border: 1px solid var(--line); }
 .venue-card legend { padding: 0 .4rem; color: var(--boundary); font: 800 .75rem ui-monospace, monospace; text-transform: uppercase; }
@@ -338,7 +351,7 @@ h1, h2, h3 { font-family: "Arial Narrow", "Roboto Condensed", sans-serif; letter
 .stage-gate { grid-column: 1 / -1; display: grid; grid-template-columns: 110px 1fr; gap: .2rem 1rem; margin: 1rem 0; padding: .8rem 1rem; border: 1px solid var(--pitch-ink); background: var(--pitch-ink); color: white; }
 .stage-gate span { grid-row: 1 / 3; align-self: center; color: var(--crease); font: .68rem ui-monospace, monospace; text-transform: uppercase; }
 .stage-gate small { color: #bdc9c0; }
-.schedule-approval { position: sticky; bottom: 1rem; display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--pitch-ink); background: rgba(251,252,248,.97); box-shadow: 10px 10px 0 rgba(20,37,28,.1); }
+.schedule-approval { position: static; display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--pitch-ink); background: rgba(251,252,248,.97); box-shadow: 10px 10px 0 rgba(20,37,28,.1); }
 .schedule-approval > div { display: grid; gap: .25rem; }
 .schedule-approval span { color: var(--muted); font-size: .75rem; }
 .secondary-action { padding: .85rem 1rem; border: 1px solid var(--pitch-ink); background: transparent; color: var(--pitch-ink); font-weight: 800; }

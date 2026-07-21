@@ -86,6 +86,7 @@ def normalize_specialist_requests(
 def _workspace_summary(workspace: GuestWorkspace) -> dict[str, object]:
     tournament = workspace.tournament
     latest_run = next(reversed(tuple(workspace.schedule_runs.values())), None)
+    current_official = workspace.official_versions[-1] if workspace.official_versions else None
     return {
         "tournament": (
             None
@@ -108,6 +109,14 @@ def _workspace_summary(workspace: GuestWorkspace) -> dict[str, object]:
             if key in workspace.weather
         },
         "official_version_count": len(workspace.official_versions),
+        "current_official_version": (
+            None
+            if current_official is None
+            else {
+                "version_id": current_official.get("version_id"),
+                "version_number": current_official.get("version_number"),
+            }
+        ),
         "draft_count": len(workspace.drafts),
         "latest_validated_options": (
             latest_run.get("options", ())

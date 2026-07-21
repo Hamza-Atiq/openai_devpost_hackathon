@@ -5,7 +5,7 @@ import json
 
 from app.main import create_app
 
-OPENAPI_V1_SHA256 = "367e6cfa9a3de1248cb896c47770692bc80819e9273bc2dc9682e45d8c9a059b"
+OPENAPI_V1_SHA256 = "9d82aa75bb4caaecb50b68ba06738d13c913bf74076cb94ddff581f2784d0fd2"
 
 
 def test_openapi_v1_canonical_snapshot() -> None:

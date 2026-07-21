@@ -8,6 +8,7 @@ export type ProblemDetails = {
   detail: string;
   correlation_id: string;
   retryable: boolean;
+  field_errors?: Array<{ location?: Array<string | number>; message?: string } & Record<string, unknown>> | null;
   evidence?: Array<Record<string, unknown>> | null;
   remedies?: Array<{ code?: string; description?: string } & Record<string, unknown>> | null;
 };
@@ -217,6 +218,7 @@ export class ApiProblemError extends Error {
   readonly status: number;
   readonly correlationId: string;
   readonly retryable: boolean;
+  readonly fieldErrors: ProblemDetails["field_errors"];
   readonly evidence: ProblemDetails["evidence"];
   readonly remedies: ProblemDetails["remedies"];
 
@@ -227,6 +229,7 @@ export class ApiProblemError extends Error {
     this.status = problem.status;
     this.correlationId = problem.correlation_id;
     this.retryable = problem.retryable;
+    this.fieldErrors = problem.field_errors;
     this.evidence = problem.evidence;
     this.remedies = problem.remedies;
   }
@@ -314,6 +317,10 @@ export class CrickOpsApiClient {
     return this.get<ScheduleComparisonResponse>(
       `/api/v1/schedule-comparisons?run_id=${encodeURIComponent(runId)}`,
     );
+  }
+
+  async getLatestScheduleRun(): Promise<{ run_id: string; status: "completed" }> {
+    return this.get<{ run_id: string; status: "completed" }>("/api/v1/schedule-runs/latest");
   }
 
   async approveSchedule(draftId: string): Promise<OfficialScheduleVersion> {

@@ -6,6 +6,7 @@ from app.domain.schedules import ScheduleMetrics, ScheduleProfile
 from app.scheduling.comparison import compare_profile_options
 from app.scheduling.pairings import generate_match_graph
 from app.scheduling.profiles import generate_profile_options
+
 from tests.domain.factories import valid_tournament
 
 GENERATED_AT = datetime(2026, 7, 16, 10, tzinfo=UTC)
@@ -148,3 +149,51 @@ def test_profile_weights_drive_distinct_solver_objectives() -> None:
     assert final_slots[ScheduleProfile.WEATHER_FIRST] == late_final.id
     assert final_slots[ScheduleProfile.FAIRNESS_FIRST] == early_final.id
     assert all(option.validation_report.valid for option in batch.options)
+
+
+def test_displayed_profile_representatives_match_their_authoritative_metrics() -> None:
+    tournament = valid_tournament()
+    matches = generate_match_graph(tournament)
+    eligible = _valid_unique_eligibility(tournament, matches)
+    final = matches[-1]
+    early_final, late_final = tournament.slots[14], tournament.slots[15]
+    eligible[final.id] = frozenset((early_final.id, late_final.id))
+    component_penalties = {
+        "weather_coverage": {
+            (final.id, early_final.id): 100,
+            (final.id, late_final.id): 0,
+        },
+        "rest": {
+            (final.id, early_final.id): 0,
+            (final.id, late_final.id): 100,
+        },
+    }
+
+    def metrics(_profile, placements):
+        final_slot = next(item.slot_id for item in placements if item.match_id == final.id)
+        return ScheduleMetrics(
+            weather_risk=10 if final_slot == late_final.id else 80,
+            weather_coverage=100,
+            group_rest_fairness=95 if final_slot == early_final.id else 60,
+            potential_knockout_rest=90 if final_slot == early_final.id else 55,
+            venue_balance=80,
+            slot_balance=80,
+            preference_satisfaction=80,
+        )
+
+    batch = generate_profile_options(
+        tournament,
+        matches,
+        eligible,
+        generated_at=GENERATED_AT,
+        metric_evaluator=metrics,
+        component_penalties=component_penalties,
+    )
+    options = {option.profile: option for option in batch.options}
+
+    assert options[ScheduleProfile.WEATHER_FIRST].metrics.weather_risk == min(
+        option.metrics.weather_risk for option in batch.options
+    )
+    assert options[ScheduleProfile.FAIRNESS_FIRST].metrics.group_rest_fairness == max(
+        option.metrics.group_rest_fairness for option in batch.options
+    )

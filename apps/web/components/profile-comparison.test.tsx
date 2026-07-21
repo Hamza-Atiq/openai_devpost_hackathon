@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ProfileComparison, type ComparisonOption } from "./profile-comparison";
+import { metricBarWidth, ProfileComparison, type ComparisonOption } from "./profile-comparison";
 
 const invalidOption: ComparisonOption = {
   profile: "balanced",
@@ -21,6 +21,11 @@ const invalidOption: ComparisonOption = {
 };
 
 describe("Profile comparison", () => {
+  it("inverts lower-is-better weather bars", () => {
+    expect(metricBarWidth("weatherRisk", 20)).toBe(80);
+    expect(metricBarWidth("weatherRisk", 70)).toBe(30);
+    expect(metricBarWidth("groupRestFairness", 70)).toBe(70);
+  });
   it("renders three aligned validated options without inventing a recommendation", () => {
     const markup = renderToStaticMarkup(<ProfileComparison />);
 

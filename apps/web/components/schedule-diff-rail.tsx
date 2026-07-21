@@ -66,7 +66,7 @@ export function ScheduleDiffRail({ validated, unchanged, moved, added, removed, 
         <section>
           <p className="eyebrow">Recovery explanation</p>
           <h2>{moved.length} fixture{moved.length === 1 ? "" : "s"} moved; {unchanged.length} preserved.</h2>
-          <p>The selected venue-time slot became unavailable. The deterministic repair engine minimized changed fixtures before movement distance and quality degradation.</p>
+          <p>The selected venue-time slot was affected by the declared disruption. The deterministic repair engine minimized changed fixtures before movement distance and quality degradation.</p>
           {Object.keys(metricDeltas).length > 0 && <ul aria-label="Repair trade-offs">{Object.entries(metricDeltas).map(([key, delta]) => <li key={key}>{metricDeltaSentence(key, delta)}</li>)}</ul>}
           <ul><li><strong>Solver evidence:</strong> {changedCount} changed placement{changedCount === 1 ? "" : "s"}.</li><li><strong>Validator evidence:</strong> {validated ? "all hard constraints and stage chronology passed" : "validation failed"}.</li></ul>
         </section>

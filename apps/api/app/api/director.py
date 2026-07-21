@@ -73,9 +73,14 @@ def build_director_router(
                     ),
                     retryable=True,
                 )
-            result = DirectorRuntimeResult.model_validate(
-                await runtime.run_turn(workspace=workspace, user_message=body.message)
-            )
+            try:
+                result = DirectorRuntimeResult.model_validate(
+                    await runtime.run_turn(workspace=workspace, user_message=body.message)
+                )
+            except Exception:
+                # The Director is optional guidance. Provider/runtime failure must never
+                # take deterministic setup, scheduling, validation, or recovery down.
+                result = _deterministic_unavailable()
 
         state.mode = result.mode
         state.provider = result.provider
