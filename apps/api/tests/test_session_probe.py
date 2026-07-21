@@ -8,7 +8,7 @@ ORIGIN = "https://crickops.example"
 SECRET = "task-005-cookie-secret-value-0001"
 
 
-def make_client(*, environment: str = "production") -> TestClient:
+def make_client(*, environment: str = "test") -> TestClient:
     app = create_app(
         probe_config=SessionProbeConfig(
             environment=environment,
@@ -69,20 +69,20 @@ def test_mutation_requires_allowed_origin_and_matching_csrf_token() -> None:
     assert accepted.headers["cache-control"] == "private, no-store, max-age=0"
 
 
-def test_production_cookie_is_rejected_by_preview_environment() -> None:
-    with make_client(environment="production") as production:
-        production.get("/api/v1/spike/session")
-        production_cookie = production.cookies.get(COOKIE_NAME)
+def test_local_cookie_is_rejected_by_test_environment() -> None:
+    with make_client(environment="local") as local:
+        local.get("/api/v1/spike/session")
+        local_cookie = local.cookies.get(COOKIE_NAME)
 
-    with make_client(environment="preview") as preview:
-        response = preview.get(
+    with make_client(environment="test") as test:
+        response = test.get(
             "/api/v1/spike/session",
-            headers={"Cookie": f"{COOKIE_NAME}={production_cookie}"},
+            headers={"Cookie": f"{COOKIE_NAME}={local_cookie}"},
         )
 
     assert response.status_code == 200
-    assert response.json()["environment"] == "preview"
-    assert response.headers["set-cookie"].split("=", 1)[1].split(";", 1)[0] != production_cookie
+    assert response.json()["environment"] == "test"
+    assert response.headers["set-cookie"].split("=", 1)[1].split(";", 1)[0] != local_cookie
 
 
 def test_probe_rejects_unknown_mutation_fields() -> None:
