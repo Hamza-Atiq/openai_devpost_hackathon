@@ -13,6 +13,7 @@ import {
   type TournamentSetupView,
 } from "@/lib/setup-contract";
 import { allocationMinutes, type MatchFormatPreset } from "@/lib/setup-state";
+import { parseCoordinateInput, type CoordinateKind } from "@/lib/coordinate-input";
 
 type GuidedSetupProps = {
   conflict?: "stale" | null;
@@ -77,6 +78,13 @@ export function GuidedSetup({
     initialSetup ? draftFromSetup(initialSetup) : fallbackDraft(revision),
   );
   const [manualCoordinates, setManualCoordinates] = useState(Boolean(initialSetup));
+  const [coordinateText, setCoordinateText] = useState(() =>
+    (initialSetup?.venues ?? fallbackDraft(revision).venues).map((venue) => ({
+      latitude: String(venue.latitude),
+      longitude: String(venue.longitude),
+    })),
+  );
+  const [coordinateErrors, setCoordinateErrors] = useState<Record<string, string>>({});
   const [confirmed, setConfirmed] = useState(false);
   const [restHoursText, setRestHoursText] = useState(() => String((initialSetup?.setup_draft.minimum_rest_minutes ?? 0) / 60));
   const [setupStatus, setSetupStatus] = useState<
@@ -89,6 +97,7 @@ export function GuidedSetup({
   );
   const parsedRestHours = Number(restHoursText);
   const restHoursValid = /^\d+$/.test(restHoursText) && Number.isInteger(parsedRestHours) && parsedRestHours >= 0 && parsedRestHours <= 168;
+  const coordinatesValid = Object.keys(coordinateErrors).length === 0;
   const constraintLedger = useMemo(
     () => [
       ...competitionInvariants,
@@ -121,6 +130,21 @@ export function GuidedSetup({
         venueIndex === index ? { ...venue, ...update } : venue,
       ) as [SetupVenueValue, SetupVenueValue],
     }));
+  }
+
+  function commitCoordinate(index: number, kind: CoordinateKind) {
+    const key = `${index}-${kind}`;
+    const parsed = parseCoordinateInput(coordinateText[index][kind], kind);
+    if ("error" in parsed) {
+      setCoordinateErrors((current) => ({ ...current, [key]: parsed.error }));
+      return;
+    }
+    setCoordinateErrors((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    updateVenue(index, { [kind]: parsed.value });
   }
 
   function updateTeam(teamId: string, update: Partial<SetupTeamValue>) {
@@ -271,8 +295,8 @@ export function GuidedSetup({
               <div className="location-status">
                 <span aria-hidden="true">◎</span>
                 <p>
-                  <b>{initialSetup ? "Manual location confirmed" : "Location awaiting confirmation"}</b>
-                  <small>Search does not discover cricket grounds.</small>
+                  <b>Coordinates ready for review</b>
+                  <small>Edits are not treated as confirmed until they save successfully.</small>
                 </p>
               </div>
               {manualCoordinates && (
@@ -293,28 +317,33 @@ export function GuidedSetup({
                     <input
                       name={`venue-${index + 1}-latitude`}
                       inputMode="decimal"
-                      value={venue.latitude}
-                      onChange={(event) =>
-                        updateVenue(index, { latitude: Number(event.target.value) })
-                      }
+                      value={coordinateText[index].latitude}
+                      aria-invalid={Boolean(coordinateErrors[`${index}-latitude`])}
+                      aria-describedby={`venue-${index + 1}-latitude-help`}
+                      onChange={(event) => setCoordinateText((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, latitude: event.target.value } : item))}
+                      onBlur={() => commitCoordinate(index, "latitude")}
                     />
+                    <small id={`venue-${index + 1}-latitude-help`}>{coordinateErrors[`${index}-latitude`] ?? "Enter a decimal from -90 to 90."}</small>
                   </label>
                   <label>
                     Longitude
                     <input
                       name={`venue-${index + 1}-longitude`}
                       inputMode="decimal"
-                      value={venue.longitude}
-                      onChange={(event) =>
-                        updateVenue(index, { longitude: Number(event.target.value) })
-                      }
+                      value={coordinateText[index].longitude}
+                      aria-invalid={Boolean(coordinateErrors[`${index}-longitude`])}
+                      aria-describedby={`venue-${index + 1}-longitude-help`}
+                      onChange={(event) => setCoordinateText((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, longitude: event.target.value } : item))}
+                      onBlur={() => commitCoordinate(index, "longitude")}
                     />
+                    <small id={`venue-${index + 1}-longitude-help`}>{coordinateErrors[`${index}-longitude`] ?? "Enter a decimal from -180 to 180."}</small>
                   </label>
                 </div>
               )}
             </fieldset>
           ))}
         </div>
+        {!manualCoordinates && <p className="field-help">Manual coordinates accept decimals: Enter a decimal from -90 to 90 latitude and Enter a decimal from -180 to 180 longitude.</p>}
         <button
           className="text-action"
           type="button"
@@ -497,7 +526,7 @@ export function GuidedSetup({
         <button
           className="primary-action"
           type="button"
-          disabled={!confirmed || !restHoursValid || setupStatus === "saving" || saveState !== "saved"}
+          disabled={!confirmed || !restHoursValid || !coordinatesValid || setupStatus === "saving" || saveState !== "saved"}
           onClick={() => void confirmHardConstraints()}
         >
           Confirm and generate schedules

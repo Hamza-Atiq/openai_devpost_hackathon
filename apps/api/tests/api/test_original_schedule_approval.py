@@ -56,6 +56,7 @@ def test_explicit_approval_creates_version_timestamp_and_audit_event() -> None:
         "schedule_feedback_recorded",
         "schedule_options_generated",
         "constraints_confirmed",
+        "sample_loaded",
     ]
     assert "Version 1" in audit.json()["items"][0]["summary"]
     assert exported.json()["workspace"]["feedback"][0]["reason"] == "unfair_rest_distribution"

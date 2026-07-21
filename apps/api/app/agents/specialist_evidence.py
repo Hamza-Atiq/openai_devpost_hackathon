@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from app.agents.director import SpecialistRequest
 from app.agents.rules import ConstraintInterpretationInput
-from app.agents.schemas import AgentRole
+from app.agents.schemas import AgentMode, AgentRole
 from app.agents.specialist_runtime import SpecialistRunRequest
 from app.agents.strategy import StrategyInput
+from app.agents.weather import VenueWeatherEvidence, WeatherAnalysisInput
 from app.api.workspace import GuestWorkspace
 from app.domain.schedules import ScheduleProfile
 
@@ -101,6 +104,38 @@ def build_specialist_request(
             tournament_revision=revision,
             consumed_fields=("validated_metrics", "confirmed_constraints"),
             tool_name="read_validated_comparison",
+            deterministic_authority=True,
+        )
+
+    if specialist_request.role is AgentRole.WEATHER_INTELLIGENCE and tournament is not None:
+        quality = str(workspace.weather.get("quality", "unavailable"))
+        provider_state = "fresh" if quality in {"complete", "partial"} else "unavailable"
+        fetched_at = workspace.weather.get("fetched_at") or datetime.now(UTC)
+        coverage = workspace.weather.get("coverage", 0.0)
+        return SpecialistRunRequest(
+            role=specialist_request.role,
+            payload=WeatherAnalysisInput(
+                venue_snapshots=tuple(
+                    VenueWeatherEvidence(
+                        venue_id=str(venue.id),
+                        provider_state=provider_state,
+                        fetched_at=fetched_at,
+                    )
+                    for venue in tournament.venues
+                ),
+                fixture_risks={},
+                weather_coverage=(
+                    float(coverage)
+                    if isinstance(coverage, int | float) and not isinstance(coverage, bool)
+                    else 0.0
+                ),
+                threshold_events=(),
+                mode=AgentMode.GPT_5_6,
+            ),
+            invocation_reason=specialist_request.reason,
+            tournament_revision=revision,
+            consumed_fields=("weather",),
+            tool_name="compare_fixture_risk",
             deterministic_authority=True,
         )
 

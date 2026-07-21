@@ -128,3 +128,23 @@ def test_precheck_and_generation_reject_stale_revisions() -> None:
     assert precheck.json()["code"] == "stale_tournament_revision"
     assert generated.status_code == 409
     assert generated.json()["code"] == "stale_tournament_revision"
+
+
+def test_latest_schedule_run_recovers_the_current_workspace_comparison() -> None:
+    client = api_client()
+    created = client.post(
+        "/api/v1/workspaces", json={"sample_id": "pakistan-community-cup"}
+    ).json()
+    confirmed_revision = confirm(client, created["tournament"]["revision"])
+    generated = client.post(
+        "/api/v1/schedule-runs",
+        json={"profiles": PROFILES, "expected_revision": confirmed_revision},
+        headers={"Idempotency-Key": "latest-run-generation"},
+    )
+
+    latest = client.get("/api/v1/schedule-runs/latest")
+
+    assert generated.status_code == 202
+    assert latest.status_code == 200
+    assert latest.json()["run_id"] == generated.json()["run_id"]
+    assert latest.json()["status"] == "completed"

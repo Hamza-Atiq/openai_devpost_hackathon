@@ -152,7 +152,55 @@ def generate_profile_options(
 
     with ThreadPoolExecutor(max_workers=len(profile_order)) as executor:
         generated = tuple(executor.map(generate, profile_order))
+    candidates = tuple(
+        item for item in generated if isinstance(item, GeneratedProfileOption)
+    )
+    by_profile = {item.profile: item for item in candidates}
+    if candidates and ScheduleProfile.WEATHER_FIRST in by_profile:
+        def weather_key(item: GeneratedProfileOption) -> tuple[float, float]:
+            return (
+                item.metrics.weather_risk if item.metrics.weather_risk is not None else 101,
+                -item.metrics.weather_coverage,
+            )
+
+        best_weather = min(
+            candidates,
+            key=lambda item: (*weather_key(item), item.validation_report.placement_digest),
+        )
+        if weather_key(best_weather) < weather_key(by_profile[ScheduleProfile.WEATHER_FIRST]):
+            by_profile[ScheduleProfile.WEATHER_FIRST] = best_weather.model_copy(
+                update={
+                    "profile": ScheduleProfile.WEATHER_FIRST,
+                    "weights": weights[ScheduleProfile.WEATHER_FIRST],
+                    "metrics": metric_evaluator(
+                        ScheduleProfile.WEATHER_FIRST, best_weather.placements
+                    ),
+                }
+            )
+    if candidates and ScheduleProfile.FAIRNESS_FIRST in by_profile:
+        def fairness_key(item: GeneratedProfileOption) -> tuple[float, float, float, float]:
+            return (
+                item.metrics.group_rest_fairness,
+                item.metrics.potential_knockout_rest,
+                item.metrics.venue_balance,
+                item.metrics.slot_balance,
+            )
+
+        best_fairness = max(
+            candidates,
+            key=lambda item: (*fairness_key(item), item.validation_report.placement_digest),
+        )
+        if fairness_key(best_fairness) > fairness_key(by_profile[ScheduleProfile.FAIRNESS_FIRST]):
+            by_profile[ScheduleProfile.FAIRNESS_FIRST] = best_fairness.model_copy(
+                update={
+                    "profile": ScheduleProfile.FAIRNESS_FIRST,
+                    "weights": weights[ScheduleProfile.FAIRNESS_FIRST],
+                    "metrics": metric_evaluator(
+                        ScheduleProfile.FAIRNESS_FIRST, best_fairness.placements
+                    ),
+                }
+            )
     return ProfileGenerationBatch(
-        options=tuple(item for item in generated if isinstance(item, GeneratedProfileOption)),
+        options=tuple(by_profile[profile] for profile in profile_order if profile in by_profile),
         failures=tuple(item for item in generated if isinstance(item, ProfileGenerationFailure)),
     )

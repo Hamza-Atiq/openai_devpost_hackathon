@@ -39,6 +39,8 @@ export function GuidedSetupLive() {
   const [setup, setSetup] = useState<TournamentSetupView | null>(null);
   const [saveState, setSaveState] = useState<SetupSaveState>("saved");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [editorVersion, setEditorVersion] = useState(0);
   const [conflict, setConflict] = useState<"stale" | null>(null);
   const [generationStage, setGenerationStage] = useState<GenerationStage>("idle");
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -55,6 +57,7 @@ export function GuidedSetupLive() {
     try {
       const loaded = await clientRef.current!.getTournamentSetup();
       setSetup(loaded);
+      setFieldErrors([]);
       setConflict(null);
 
       const pending = readPendingSetup();
@@ -103,6 +106,12 @@ export function GuidedSetupLive() {
         setConflict("stale");
       }
       setSaveState("error");
+      if (error instanceof ApiProblemError) {
+        setFieldErrors((error.fieldErrors ?? []).map((item) => {
+          const location = (item.location ?? []).slice(1).map((part) => typeof part === "number" ? part + 1 : String(part).replaceAll("_", " ")).join(" → ");
+          return `${location || "Setup field"}: ${item.message ?? "Invalid value"}`;
+        }));
+      }
       setLoadError(error instanceof Error ? error.message : "Setup changes could not be saved.");
     } finally {
       saveInFlightRef.current = false;
@@ -137,11 +146,21 @@ export function GuidedSetupLive() {
       JSON.stringify({ workspaceSetupId: setup.id, draft: revisionedDraft } satisfies PendingSetup),
     );
     setLoadError(null);
+    setFieldErrors([]);
     setSaveState("dirty");
     setGenerationStage("idle");
     setGenerationError(null);
     setGenerationEvidence([]);
     setGenerationRemedies([]);
+  }
+
+  function discardUnsavedChanges() {
+    latestDraftRef.current = null;
+    sessionStorage.removeItem(PENDING_SETUP_KEY);
+    setLoadError(null);
+    setFieldErrors([]);
+    setSaveState("saved");
+    setEditorVersion((current) => current + 1);
   }
 
   async function confirmAndGenerate(input: Parameters<CrickOpsApiClient["confirmSetup"]>[0]) {
@@ -204,11 +223,13 @@ export function GuidedSetupLive() {
         <div className="operation-status operation-status-error" role="alert">
           <strong>Your edits are safe in this browser, but not yet saved.</strong>
           <p>{loadError}</p>
+          {fieldErrors.length > 0 && <ul>{fieldErrors.map((item) => <li key={item}>{item}</li>)}</ul>}
           <button type="button" onClick={() => void flushLatestDraft()}>Retry save</button>
+          <button type="button" onClick={discardUnsavedChanges}>Discard unsaved changes</button>
         </div>
       )}
       <GuidedSetup
-        key={`${setup.id}:${setup.revision}`}
+        key={`${setup.id}:${setup.revision}:${editorVersion}`}
         initialSetup={renderedSetup}
         revision={setup.revision}
         saveState={saveState}

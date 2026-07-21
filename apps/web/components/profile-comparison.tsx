@@ -30,6 +30,7 @@ type ProfileComparisonProps = {
   onGenerate?: (priorities?: Record<string, number>) => Promise<{
     options: ComparisonOption[];
     identicalProfiles: string[];
+    runId?: string;
   }>;
   onApprove?: (draftId: string) => Promise<{ versionNumber: number; approvedAt: string }>;
 };
@@ -81,6 +82,11 @@ function metricValue(value: number | null) {
   return value === null ? "Unknown" : `${value.toFixed(1)}%`;
 }
 
+export function metricBarWidth(key: keyof ComparisonMetrics, value: number | null) {
+  if (value === null) return 0;
+  return key === "weatherRisk" ? 100 - value : value;
+}
+
 export function ProfileComparison({
   options = defaultOptions,
   identicalProfiles = [],
@@ -95,6 +101,7 @@ export function ProfileComparison({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [approvedVersion, setApprovedVersion] = useState<{ versionNumber: number; approvedAt: string } | null>(null);
+  const [generatedRunId, setGeneratedRunId] = useState<string | null>(null);
 
   async function generate(priorities?: Record<string, number>) {
     if (!onGenerate) return;
@@ -104,6 +111,7 @@ export function ProfileComparison({
       const result = await onGenerate(priorities);
       setDisplayedOptions(result.options);
       setIdentical(result.identicalProfiles);
+      setGeneratedRunId(result.runId ?? null);
       setSelected(null);
     } catch (generationError) {
       setError(generationError instanceof Error ? generationError.message : "Schedule generation failed.");
@@ -138,6 +146,7 @@ export function ProfileComparison({
       </header>
 
       {error && <div className="error-banner" role="alert">{error} Keep the confirmed constraints and try again.</div>}
+      {generatedRunId && <div className="operation-status" role="status">New validated schedule run loaded.</div>}
 
       {identical.length > 1 && (
         <aside className="identical-note" role="note">
@@ -165,7 +174,7 @@ export function ProfileComparison({
             <dl>
               {metricRows.map((row) => {
                 const value = option.metrics[row.key];
-                return <div key={row.key}><dt>{row.label}</dt><dd>{metricValue(value)}</dd><span className="metric-track" aria-hidden="true"><i style={{ width: `${value ?? 0}%` }} /></span></div>;
+                return <div key={row.key}><dt>{row.label}</dt><dd>{metricValue(value)}</dd><span className="metric-track" aria-hidden="true"><i style={{ width: `${metricBarWidth(row.key, value)}%` }} /></span></div>;
               })}
             </dl>
             <div className="violation-list">
