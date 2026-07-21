@@ -48,4 +48,47 @@ describe("Organizer activity timeline", () => {
     expect(markup).toContain("No material decisions recorded yet");
     expect(markup).not.toContain("Official schedule approved");
   });
+
+  it("renders structured specialist evidence without object coercion or blank fields", () => {
+    const markup = renderToStaticMarkup(
+      <ActivityTimeline
+        events={[
+          {
+            id: "director-event",
+            event_type: "director_turn_completed",
+            actor_type: "system",
+            summary: "Director answered from validated evidence.",
+            occurred_at: "2026-07-21T08:30:00+00:00",
+            structured_payload: {
+              specialist_evidence: [
+                {
+                  role: "rules_constraint",
+                  organizer_summary: "Checked the confirmed constraints.",
+                  validation_status: "valid",
+                },
+                {
+                  role: "weather_intelligence",
+                  validation_status: "valid",
+                },
+              ],
+            },
+          },
+          {
+            id: "repair-event",
+            event_type: "repair_generated",
+            actor_type: "system",
+            summary: "Repair remained available during an agent outage.",
+            occurred_at: "2026-07-21T08:20:00+00:00",
+            structured_payload: { specialist_evidence: [] },
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain("Rules constraint — Checked the confirmed constraints. (valid)");
+    expect(markup).toContain("Weather intelligence (valid)");
+    expect(markup).toContain("AI-assisted director");
+    expect(markup).not.toContain("[object Object]");
+    expect(markup.match(/specialist evidence/g)).toHaveLength(1);
+  });
 });

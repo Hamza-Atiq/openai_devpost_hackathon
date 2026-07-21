@@ -35,6 +35,8 @@ const eventLabels: Record<string, string> = {
   schedule_restored: "Earlier schedule restored",
   disruption_declared: "Disruption declared",
   repair_generated: "Repair option generated",
+  director_turn_completed: "Director turn completed",
+  director_turn_unavailable: "Director turn unavailable",
 };
 
 const reasonOptions: Array<{ value: FeedbackReason; label: string }> = [
@@ -62,14 +64,49 @@ const hiddenPayloadKeys = new Set([
   "workspace_id",
 ]);
 
-function payloadDetails(payload: Record<string, unknown> | undefined) {
-  return Object.entries(payload ?? {}).filter(
-    ([key, value]) => !hiddenPayloadKeys.has(key) && value !== null && value !== undefined,
-  );
-}
-
 function readableKey(key: string) {
   return key.replaceAll("_", " ");
+}
+
+function readableLabel(value: string) {
+  const label = readableKey(value);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function actorLabel(event: AuditEventView) {
+  if (event.event_type.startsWith("director_turn_")) return "AI-assisted director";
+  return event.actor_type === "system" ? "Deterministic service" : "Organizer action";
+}
+
+function formatPayloadValue(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    const items = value.map(formatPayloadValue).filter((item): item is string => Boolean(item));
+    return items.length > 0 ? items.join("; ") : null;
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.role === "string") {
+      const role = readableLabel(record.role);
+      const summary = typeof record.organizer_summary === "string" && record.organizer_summary.trim()
+        ? ` — ${record.organizer_summary.trim()}`
+        : "";
+      const validation = typeof record.validation_status === "string"
+        ? ` (${readableKey(record.validation_status)})`
+        : "";
+      return `${role}${summary}${validation}`;
+    }
+    return JSON.stringify(record);
+  }
+  return String(value);
+}
+
+function payloadDetails(payload: Record<string, unknown> | undefined) {
+  return Object.entries(payload ?? {}).flatMap(([key, value]) => {
+    if (hiddenPayloadKeys.has(key)) return [];
+    const formatted = formatPayloadValue(value);
+    return formatted ? [[key, formatted] as const] : [];
+  });
 }
 
 export function ActivityTimeline({ events, feedbackTarget, onFeedback }: Props) {
@@ -115,11 +152,11 @@ export function ActivityTimeline({ events, feedbackTarget, onFeedback }: Props) 
                 <div className="activity-marker" aria-hidden="true"><span>{String(events.length - index).padStart(2, "0")}</span></div>
                 <article>
                   <header>
-                    <div><span>{eventLabels[event.event_type] ?? readableKey(event.event_type)}</span><small>{event.actor_type === "system" ? "Deterministic service" : "Organizer action"}</small></div>
+                    <div><span>{eventLabels[event.event_type] ?? readableKey(event.event_type)}</span><small>{actorLabel(event)}</small></div>
                     <time dateTime={event.occurred_at}>{new Date(event.occurred_at).toLocaleString()}</time>
                   </header>
                   <p>{event.summary}</p>
-                  {details.length > 0 && <dl>{details.map(([key, value]) => <div key={key}><dt>{readableKey(key)}</dt><dd>{Array.isArray(value) ? value.join(", ") : String(value)}</dd></div>)}</dl>}
+                  {details.length > 0 && <dl>{details.map(([key, value]) => <div key={key}><dt>{readableKey(key)}</dt><dd>{value}</dd></div>)}</dl>}
                 </article>
               </li>
             );
