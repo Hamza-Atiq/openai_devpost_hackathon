@@ -4,6 +4,7 @@ from app.domain.venues import SlotAvailability, VenueSlot
 from app.scheduling.model import solve_hard_feasible_schedule
 from app.scheduling.pairings import generate_match_graph
 from app.scheduling.solver_result import InfeasibilityCode, SolverStatus
+
 from tests.domain.factories import valid_tournament
 
 
@@ -82,3 +83,28 @@ def test_rejects_a_missing_or_fabricated_match_graph_before_solving() -> None:
 
     assert result.status is SolverStatus.INFEASIBLE
     assert result.evidence_codes == (InfeasibilityCode.INVALID_MATCH_GRAPH,)
+
+
+def test_one_configured_start_cannot_host_two_matches_across_different_venues() -> None:
+    tournament = valid_tournament()
+    matches = generate_match_graph(tournament)
+    first = tournament.slots[0]
+    parallel = VenueSlot.model_validate(
+        {
+            **first.model_dump(),
+            "id": "01890f3e-0001-7000-8000-000000009999",
+            "venue_id": tournament.venues[1].id,
+        }
+    )
+    tournament = tournament.model_copy(update={"slots": (*tournament.slots, parallel)})
+    available = frozenset(slot.id for slot in tournament.slots)
+    eligible = {match.id: available for match in matches}
+
+    result = solve_hard_feasible_schedule(
+        tournament,
+        matches,
+        eligible,
+        required_slot_by_match={matches[0].id: first.id, matches[6].id: parallel.id},
+    )
+
+    assert result.status is SolverStatus.INFEASIBLE

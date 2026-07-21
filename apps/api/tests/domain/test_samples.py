@@ -37,10 +37,11 @@ def test_samples_roll_into_forecast_horizon_with_real_repair_slack() -> None:
         tournament = load_sample(sample_id, reference_date=reference)
 
         assert tournament.start_date == date(2026, 7, 22)
-        assert tournament.end_date == date(2026, 7, 31)
+        assert tournament.end_date == date(2026, 8, 3)
         assert (tournament.end_date - reference).days <= 16
-        assert len(tournament.slots) == 28
-        assert len({(slot.venue_id, slot.starts_at_utc) for slot in tournament.slots}) == 28
+        assert len(tournament.slots) == 40
+        assert len({(slot.venue_id, slot.starts_at_utc) for slot in tournament.slots}) == 40
+        assert len({slot.starts_at_utc for slot in tournament.slots}) == 20
 
 
 def test_sample_names_do_not_use_known_team_or_tournament_brands() -> None:

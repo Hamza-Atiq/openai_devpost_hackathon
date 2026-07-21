@@ -3,7 +3,7 @@
   "name": "Pakistan Community Cricket Cup",
   "match_format_preset": "T20",
   "start_offset_days": 3,
-  "window_days": 10,
+  "window_days": 13,
   "iana_time_zone": "Asia/Karachi",
   "team_names": [
     "Canal XI",
@@ -31,7 +31,7 @@
       "longitude": 74.3200
     }
   ],
-  "available_day_offsets": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "available_day_offsets": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   "local_start_times": ["10:00:00", "15:00:00"],
-  "dual_start_day_count": 4
+  "dual_start_day_count": 7
 }

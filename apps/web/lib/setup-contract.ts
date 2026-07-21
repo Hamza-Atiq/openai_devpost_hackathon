@@ -61,6 +61,17 @@ export function shortTime(value: string): string {
   return value.slice(0, 5);
 }
 
+export function startTimesInputValue(values: string[]): string {
+  return values.map(shortTime).join(", ");
+}
+
+export function parseStartTimesInput(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function defaultSetupTeams(): SetupTeamValue[] {
   return Array.from({ length: 8 }, (_, index) => ({
     id: `00000000-0000-7000-8000-${String(index + 1).padStart(12, "0")}`,

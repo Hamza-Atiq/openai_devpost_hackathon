@@ -7,6 +7,7 @@ from app.scheduling.precheck import (
     RemedyCode,
     run_pre_solver_checks,
 )
+
 from tests.domain.factories import valid_tournament
 
 
@@ -37,6 +38,32 @@ def test_insufficient_capacity_returns_stable_evidence_and_remedy() -> None:
     assert result.can_solve is False
     assert FeasibilityIssueCode.INSUFFICIENT_CAPACITY in result.evidence_codes
     assert RemedyCode.ADD_VENUE_SLOTS in result.remedy_codes
+
+
+def test_parallel_venue_rows_count_as_one_configured_start_opportunity() -> None:
+    tournament = valid_tournament()
+    matches = generate_match_graph(tournament)
+    first = tournament.slots[0]
+    slots = tuple(
+        VenueSlot.model_validate(
+            {
+                **slot.model_dump(),
+                "starts_at_utc": first.starts_at_utc,
+                "ends_at_utc": first.ends_at_utc,
+                "local_date": first.local_date,
+            }
+        )
+        if index >= 14
+        else slot
+        for index, slot in enumerate(tournament.slots)
+    )
+    tournament = tournament.model_copy(update={"slots": slots})
+
+    result = run_pre_solver_checks(
+        tournament, matches, _all_slots_eligible(tournament, matches)
+    )
+
+    assert FeasibilityIssueCode.INSUFFICIENT_CAPACITY in result.evidence_codes
 
 
 def test_blackouts_that_remove_capacity_are_identified_separately() -> None:

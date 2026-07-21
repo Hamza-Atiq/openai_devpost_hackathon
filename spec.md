@@ -259,10 +259,15 @@ No LLM calculates these values. Profile comparison uses the same metric version 
 12. **Single tournament timezone:** both venues must have the same confirmed IANA timezone; all local-day constraints and display derivations use it.
 13. **Per-venue interval non-overlap:** each candidate placement creates an optional interval variable with fixed preset duration, present when selected. `AddNoOverlap` applies to all optional intervals at each venue. Precomputed conflict constraints are a mathematically equivalent fallback, but one-slot-ID capacity alone is insufficient. Every selected interval must be contained within its venue availability window.
 14. **Qualification-role exclusivity:** A1 and A2 are distinct qualifier roles occupied by different Group A teams; B1 and B2 are distinct roles occupied by different Group B teams. A team cannot occupy both semifinals. Hard rest is enforced for every feasible group-stage-to-role path, and final rest is enforced through either semifinal-winner path. Placeholder modeling must not treat every team as simultaneously occupying both roles.
+15. **Tournament start-time capacity:** all venue-slot candidates sharing one organizer-listed start instant form one capacity bucket, and the sum of selected placements across that bucket is at most one. The solver chooses the venue; a single listed time never silently becomes two parallel fixtures.
 
 Constraint 5 deliberately prohibits two same-local-day matches even when their intervals do not overlap, satisfying SCHED-020 and AC-021.
 
+Constraint 15 implements SCHED-029. Precheck counts distinct available start instants rather than venue rows, and independent validation rejects parallel placements at one configured start.
+
 ### 6.4 Soft objectives
+
+The rest/cadence placement component targets fixture sequence evenly across the available start ranks. This prevents the former early-group/late-knockout bias while leaving weather, rest, venue, slot, and organizer weights free to move fixtures when operational evidence supports it.
 
 The solver minimizes a weighted integer penalty:
 

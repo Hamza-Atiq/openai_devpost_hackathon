@@ -75,6 +75,16 @@ def solve_hard_feasible_schedule(
     for slot in ordered_slots:
         model.add_at_most_one(placement[(match.id, slot.id)] for match in ordered_matches)
 
+    # Each organizer-entered start is one tournament opportunity. Venue rows
+    # are alternative locations for that match, not parallel match capacity.
+    for instant in sorted({slot.starts_at_utc for slot in ordered_slots}):
+        candidate_slots = tuple(slot for slot in ordered_slots if slot.starts_at_utc == instant)
+        model.add_at_most_one(
+            placement[(match.id, slot.id)]
+            for match in ordered_matches
+            for slot in candidate_slots
+        )
+
     add_venue_interval_constraints(
         model,
         placement,

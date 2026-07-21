@@ -304,6 +304,14 @@ export class CrickOpsApiClient {
   async createScheduleRun(
     customPriorities?: CustomPriorities,
   ): Promise<{ run_id: string }> {
+    const weather = await this.getWeather();
+    if (weather.quality === "refresh_required") {
+      if (weather.mode === "deterministic") {
+        await this.activateRainDemo();
+      } else {
+        await this.refreshWeather("live");
+      }
+    }
     const profiles = ["balanced", "weather_first", "fairness_first"];
     if (customPriorities) profiles.push("custom");
     return this.request<{ run_id: string }>(

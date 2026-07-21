@@ -23,7 +23,7 @@ describe("guided tournament setup", () => {
     expect(markup).toContain("Enter a decimal from -90 to 90");
     expect(markup).toContain("Enter a decimal from -180 to 180");
     expect(markup).toContain("Shared tournament timezone");
-    expect(markup).toContain("Weekday start time");
+    expect(markup).toContain("Weekday start times");
     expect(markup).toContain("Weekend start times");
     expect(markup).toContain("Venue blackout date");
     expect(markup).toContain("Constraint Ledger");

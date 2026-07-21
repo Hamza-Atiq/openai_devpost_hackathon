@@ -275,7 +275,7 @@ def test_live_weather_service_persists_slot_level_risk_and_provenance() -> None:
     assert response.status_code == 200
     assert response.json()["quality"] == "complete"
     assert response.json()["coverage"] == 100.0
-    assert len(response.json()["slot_risks"]) == 28
+    assert len(response.json()["slot_risks"]) == 40
     assert response.json()["provider"] == "open-meteo"
     assert response.json()["attribution"] == "Weather data by Open-Meteo.com"
     assert restored.json() == response.json()

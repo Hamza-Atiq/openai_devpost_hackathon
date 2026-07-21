@@ -156,6 +156,12 @@ describe("CrickOpsApiClient", () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(
+        new Response(JSON.stringify({ mode: "deterministic", quality: "complete" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ run_id: "run-1", status: "accepted" }), {
           status: 202,
           headers: { "Content-Type": "application/json" },
@@ -179,6 +185,11 @@ describe("CrickOpsApiClient", () => {
 
     expect(fetcher).toHaveBeenNthCalledWith(
       1,
+      "/api/v1/weather",
+      expect.objectContaining({ method: "GET", credentials: "same-origin" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
       "/api/v1/schedule-runs",
       expect.objectContaining({
         method: "POST",
@@ -187,9 +198,51 @@ describe("CrickOpsApiClient", () => {
       }),
     );
     expect(fetcher).toHaveBeenNthCalledWith(
-      2,
+      3,
       "/api/v1/schedule-comparisons?run_id=run-1",
       expect.objectContaining({ method: "GET", credentials: "same-origin" }),
+    );
+  });
+
+  it("refreshes invalidated deterministic weather before starting a schedule run", async () => {
+    vi.stubGlobal("crypto", { randomUUID: () => "run-key-weather" });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ mode: "deterministic", quality: "refresh_required" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ mode: "deterministic", quality: "complete", coverage: 100 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ run_id: "run-weather", status: "accepted" }), {
+          status: 202,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    await new CrickOpsApiClient(fetcher).createScheduleRun();
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/weather",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/weather/demo-scenarios/rain-threshold-v1/activate",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      3,
+      "/api/v1/schedule-runs",
+      expect.objectContaining({ method: "POST" }),
     );
   });
 

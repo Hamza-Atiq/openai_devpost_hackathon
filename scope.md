@@ -58,6 +58,8 @@ Teams, players, officials, venue managers, and spectators are affected stakehold
 - Both venues in a Version 1 tournament use the same IANA timezone; multi-timezone tournaments are deferred.
 - A configurable tournament window of 7–21 calendar days.
 - Organizer-defined dates, slot patterns, blackout periods, and availability.
+- Each organizer-listed start time represents one tournament match opportunity; the solver chooses one of the two venues and does not schedule parallel fixtures at that start.
+- Schedule quality includes a coherent tournament cadence, avoiding unnecessarily packed group stages followed by long idle gaps before knockouts.
 - Semifinal and final participants remain qualification placeholders; results-driven progression is deferred.
 
 ### Guided flexibility

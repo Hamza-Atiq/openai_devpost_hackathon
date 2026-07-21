@@ -67,8 +67,8 @@ _MESSAGES = {
         "The allocation block does not match the selected preset."
     ),
     FeasibilityIssueCode.TIMEZONE_MISMATCH: "Both Version 1 venues must share one IANA timezone.",
-    FeasibilityIssueCode.INSUFFICIENT_CAPACITY: "Fewer than 15 eligible venue slots are available.",
-    FeasibilityIssueCode.BLACKOUT_CAPACITY: "Blackouts reduce available capacity below 15 slots.",
+    FeasibilityIssueCode.INSUFFICIENT_CAPACITY: "Fewer than 15 distinct tournament start times are available.",
+    FeasibilityIssueCode.BLACKOUT_CAPACITY: "Blackouts reduce available start-time capacity below 15 matches.",
     FeasibilityIssueCode.NO_ELIGIBLE_SLOT: "At least one match has no eligible available slot.",
     FeasibilityIssueCode.CONFLICTING_PIN: (
         "A required pin is invalid or conflicts with another pin."
@@ -163,10 +163,12 @@ def run_pre_solver_checks(
         for slot_id in raw_ids
         if slot_by_id[slot_id].availability is SlotAvailability.AVAILABLE
     }
-    if len(available_ids) < 15:
+    raw_starts = {slot_by_id[slot_id].starts_at_utc for slot_id in raw_ids}
+    available_starts = {slot_by_id[slot_id].starts_at_utc for slot_id in available_ids}
+    if len(available_starts) < 15:
         issue = (
             FeasibilityIssueCode.BLACKOUT_CAPACITY
-            if len(raw_ids) >= 15
+            if len(raw_starts) >= 15
             else FeasibilityIssueCode.INSUFFICIENT_CAPACITY
         )
         issues.append(issue)

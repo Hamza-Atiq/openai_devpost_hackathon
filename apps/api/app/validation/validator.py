@@ -136,6 +136,15 @@ def _validate_slots(
 
     known = tuple(placement for placement in placements if placement.slot_id in slot_by_id)
     for first, second in combinations(known, 2):
+        if first.starts_at_utc == second.starts_at_utc:
+            violations.append(
+                _violation(
+                    ViolationCode.TOURNAMENT_CONCURRENCY,
+                    "Only one fixture may use an organizer-configured start time.",
+                    first,
+                    second,
+                )
+            )
         if first.venue_id == second.venue_id and (
             first.starts_at_utc < second.ends_at_utc and second.starts_at_utc < first.ends_at_utc
         ):
@@ -271,6 +280,7 @@ def validate_schedule(
             ViolationCode.PLACEMENT_MISMATCH,
             ViolationCode.ALLOCATION_OVERFLOW,
             ViolationCode.VENUE_OVERLAP,
+            ViolationCode.TOURNAMENT_CONCURRENCY,
         },
         "teams_and_chronology": {
             ViolationCode.TEAM_OVERLAP,

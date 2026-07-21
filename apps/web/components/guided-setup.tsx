@@ -6,6 +6,8 @@ import { ApiProblemError, CrickOpsApiClient } from "@/lib/api-client";
 import {
   draftFromSetup,
   defaultSetupTeams,
+  parseStartTimesInput,
+  startTimesInputValue,
   type SetupSaveState,
   type SetupTeamValue,
   type SetupVenueValue,
@@ -420,17 +422,18 @@ export function GuidedSetup({
           <div>
             <span>MON—FRI</span>
             <label>
-              Weekday start time
+              Weekday start times
               <input
-                type="time"
-                value={draft.weekday_start_times[0] ?? ""}
+                value={startTimesInputValue(draft.weekday_start_times)}
+                aria-describedby="weekday-times-hint"
                 onChange={(event) =>
                   updateDraft((current) => ({
                     ...current,
-                    weekday_start_times: [event.target.value],
+                    weekday_start_times: parseStartTimesInput(event.target.value),
                   }))
                 }
               />
+              <small id="weekday-times-hint">One tournament match per listed start. Separate multiple times with commas.</small>
             </label>
           </div>
           <div>
@@ -438,14 +441,11 @@ export function GuidedSetup({
             <label>
               Weekend start times
               <input
-                value={draft.weekend_start_times.join(", ")}
+                value={startTimesInputValue(draft.weekend_start_times)}
                 onChange={(event) =>
                   updateDraft((current) => ({
                     ...current,
-                    weekend_start_times: event.target.value
-                      .split(",")
-                      .map((value) => value.trim())
-                      .filter(Boolean),
+                    weekend_start_times: parseStartTimesInput(event.target.value),
                   }))
                 }
               />

@@ -15,6 +15,7 @@ class ViolationCode(StrEnum):
     PLACEMENT_MISMATCH = "placement_mismatch"
     ALLOCATION_OVERFLOW = "allocation_overflow"
     VENUE_OVERLAP = "venue_overlap"
+    TOURNAMENT_CONCURRENCY = "tournament_concurrency"
     TEAM_OVERLAP = "team_overlap"
     TEAM_LOCAL_DAY = "team_local_day"
     REST_VIOLATION = "rest_violation"

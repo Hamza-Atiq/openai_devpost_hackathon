@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from datetime import UTC, datetime
 from decimal import Decimal
 from time import perf_counter
@@ -154,7 +155,12 @@ def _eligibility(workspace: GuestWorkspace):
     available_slot_ids = frozenset(
         slot.id for slot in tournament.slots if slot.availability is SlotAvailability.AVAILABLE
     )
-    if len(available_slot_ids) < 15:
+    available_starts = {
+        slot.starts_at_utc
+        for slot in tournament.slots
+        if slot.id in available_slot_ids
+    }
+    if len(available_starts) < 15:
         return matches, {match.id: frozenset() for match in matches}
     return matches, {match.id: available_slot_ids for match in matches}
 
@@ -167,6 +173,16 @@ def _slot_category(local_hour: int) -> str:
     if 17 <= local_hour <= 22:
         return "evening"
     return "off_hours"
+
+
+def cadence_penalty(
+    *, sequence: int, fixture_count: int, rank: int, last_rank: int
+) -> int:
+    """Penalize distance from an evenly spaced fixture-sequence target."""
+    if fixture_count < 2 or last_rank < 1:
+        return 0
+    target = round((sequence - 1) * last_rank / (fixture_count - 1))
+    return round(abs(rank - target) * 100 / last_rank)
 
 
 def _component_penalties(
@@ -230,8 +246,12 @@ def _component_penalties(
                 min(Decimal(100), max(Decimal(0), weather_penalty))
             )
             rank = start_rank[slot.starts_at_utc]
-            rest_rank = rank if match.stage is MatchStage.GROUP else last_rank - rank
-            penalties["rest"][key] = round(rest_rank * 100 / last_rank)
+            penalties["rest"][key] = cadence_penalty(
+                sequence=match.sequence,
+                fixture_count=len(matches),
+                rank=rank,
+                last_rank=last_rank,
+            )
             penalties["venue_balance"][key] = (
                 0 if venue_index[slot.venue_id] == target_venue else 100
             )
@@ -542,6 +562,7 @@ def build_schedule_router(
             "options": options,
             "specialist_evidence": [],
             "agent_status": "not_configured",
+            "weather_snapshot": deepcopy(workspace.weather),
         }
         workspace.schedule_runs[run_id] = run
         if workflow_orchestrator is not None:
@@ -702,8 +723,23 @@ def build_schedule_router(
         placement_by_match = {placement.match_id: placement for placement in draft.placements}
         venues = {venue.id: venue for venue in tournament.venues}
         team_names = {str(team.id): team.display_name for team in tournament.teams}
-        slot_risks = workspace.weather.get("slot_risks", {})
-        slot_details = workspace.weather.get("slot_details", {})
+        generating_run = next(
+            (
+                run
+                for run in workspace.schedule_runs.values()
+                if draft_id in {str(item) for item in run.get("draft_ids", ())}
+            ),
+            None,
+        )
+        weather_snapshot = (
+            generating_run.get("weather_snapshot", workspace.weather)
+            if generating_run is not None
+            else workspace.weather
+        )
+        if not isinstance(weather_snapshot, dict):
+            weather_snapshot = workspace.weather
+        slot_risks = weather_snapshot.get("slot_risks", {})
+        slot_details = weather_snapshot.get("slot_details", {})
         if not isinstance(slot_risks, dict):
             slot_risks = {}
         if not isinstance(slot_details, dict):
@@ -759,14 +795,14 @@ def build_schedule_router(
         coverage = round(covered / len(fixtures) * 100, 1) if fixtures else 0.0
         return {
             "draft_id": draft_id,
-            "mode": workspace.weather.get("mode", "live"),
-            "provider": workspace.weather.get("provider"),
-            "issued_at": workspace.weather.get("issued_at"),
-            "fetched_at": workspace.weather.get("fetched_at"),
-            "quality": workspace.weather.get("quality", "unavailable"),
+            "mode": weather_snapshot.get("mode", "live"),
+            "provider": weather_snapshot.get("provider"),
+            "issued_at": weather_snapshot.get("issued_at"),
+            "fetched_at": weather_snapshot.get("fetched_at"),
+            "quality": weather_snapshot.get("quality", "unavailable"),
             "coverage": coverage,
             "allocation_minutes": tournament.allocation_minutes,
-            "attribution": workspace.weather.get("attribution"),
+            "attribution": weather_snapshot.get("attribution"),
             "fixtures": fixtures,
         }
 

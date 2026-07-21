@@ -105,7 +105,12 @@ def generate_profile_options(
         ScheduleProfile.FAIRNESS_FIRST,
     ]
     weights: dict[ScheduleProfile, Mapping[str, Decimal | int]] = {
-        profile: config.profiles[profile.value].weights.model_dump(exclude={"schema_version"})
+        profile: {
+            name: Decimal(value)
+            for name, value in config.profiles[profile.value]
+            .weights.model_dump(exclude={"schema_version"})
+            .items()
+        }
         for profile in profile_order
     }
     if custom_priorities is not None:
